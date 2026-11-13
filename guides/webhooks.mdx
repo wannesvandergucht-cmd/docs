@@ -1,0 +1,137 @@
+---
+title: "Webhooks: Get Notified When Data Changes in Tilroy"
+sidebarTitle: "Webhooks"
+description: "Receive near real-time notifications when customers, orders, stock or vouchers change in Tilroy, then fetch the current data through the Tilroy API."
+---
+
+Tilroy can notify your system as soon as a customer, an order, a stock record or a voucher changes. A webhook tells you *what* changed. You then fetch the current data through the Tilroy API.
+
+## Available webhooks
+
+Webhooks are available for customers, orders, stock and vouchers. Each webhook is a short notification that carries identifiers only, never the full object.
+
+| Object | Sent when | Fields in the body |
+| --- | --- | --- |
+| Customer | A customer is created or updated | `tilroyId` (always), `sourceId` and `code` (when available) |
+| Order | An order is created or updated | `tilroyId` and `number` (the order number) |
+| Stock | The stock of a SKU changes | `tilroyId` of the stock record |
+| Voucher | A voucher is created or updated, including vouchers created in bulk | The voucher id |
+
+Each object type is sent to its own URL. If your endpoint expects a different body structure, Tilroy can map these fields to it.
+
+### Payload examples
+
+<Tabs>
+  <Tab title="Customer">
+    Tilroy sends a `POST` to your customer endpoint:
+
+    ```json customer-webhook.json
+    {
+      "tilroyId": "1235",
+      "sourceId": "abc-126-xyz",
+      "code": "JANSENSK"
+    }
+    ```
+
+    - `tilroyId`: Tilroy's internal customer id. Use it to fetch the customer.
+    - `sourceId`: your own id for the customer, if you set one.
+    - `code`: the human-readable customer code (by default an incrementing number).
+  </Tab>
+  <Tab title="Order">
+    Tilroy sends a `POST` to your order endpoint:
+
+    ```json order-webhook.json
+    {
+      "order": {
+        "tilroyId": "12345",
+        "number": "36985"
+      }
+    }
+    ```
+
+    - `tilroyId`: Tilroy's internal order id. Use it to fetch the order.
+    - `number`: the order number shown to the customer.
+  </Tab>
+  <Tab title="Stock">
+    Tilroy sends a `POST` to your stock endpoint:
+
+    ```json stock-webhook.json
+    {
+      "stock": {
+        "tilroyId": "12345"
+      }
+    }
+    ```
+  </Tab>
+  <Tab title="Voucher">
+    Tilroy sends a `POST` to your voucher endpoint with the id of the voucher.
+
+    When a list of vouchers is created and activated at once, you receive one webhook per voucher, spread out over time.
+  </Tab>
+</Tabs>
+
+## Handling a webhook
+
+Treat a webhook as a signal to fetch fresh data, not as the data itself.
+
+<Steps>
+  <Step title="Receive the notification">
+    Tilroy sends a `POST` to your endpoint with the identifiers described above.
+  </Step>
+  <Step title="Respond quickly">
+    Respond with a `2xx` status. Process the notification afterwards so the response stays fast.
+  </Step>
+  <Step title="Fetch the current object">
+    Fetch the current object with the `tilroyId` through the Tilroy API, using your usual [API keys and token](/authentication):
+
+    - **Customer:** the customer endpoint of the [Customer API](https://tilroy-apidocs-prd.s3.eu-west-1.amazonaws.com/customerapi.html).
+    - **Order:** get the order by `tilroyId` in the [Order API](https://tilroyorderapi.docs.apiary.io/#reference/orders/orderapiproductionorderstilroyid/search-order-by-id).
+    - **Stock:** `GET stock/{id}`.
+    - **Voucher:** get the voucher by id in the [Voucher API v2](https://tilroyvoucherapi.docs.apiary.io/#reference/voucher_v2/voucherapiproductionv2vouchersvoucherid/get-a-voucher).
+  </Step>
+  <Step title="Update your system">
+    Update your system with the data you fetched.
+  </Step>
+</Steps>
+
+## Setting up and securing your endpoint
+
+Tilroy activates webhooks for you. There is no self-service setup. Send the following to [integrations@tilroy.com](mailto:integrations@tilroy.com):
+
+- The objects you want webhooks for (customers, orders, stock, vouchers).
+- One endpoint URL per object, for each environment (test/acceptance and production).
+- How Tilroy should authenticate to your endpoint (see below).
+- Any body structure you need, if it differs from the examples above.
+
+| Option | How it works |
+| --- | --- |
+| OAuth2 client credentials | You give Tilroy a client id, client secret, scope and token URL. Tilroy fetches a token and sends it as a `Bearer` token on every call. |
+| Shared secret header | Tilroy adds a fixed HTTP header with a secret you provide, for example `X-Webhook-Secret`. You reject calls without the right value. |
+| IP whitelisting | Tilroy sends webhooks from a single public IP address, available on request. You can allow only that address. |
+
+You can combine IP whitelisting with one of the other options.
+
+<Note>
+  A webhook carries identifiers only. Reading the data always requires your own API credentials.
+</Note>
+
+## Delivery, retries and fallback
+
+Webhooks give you near real-time updates, but you still need a periodic sync as a safety net.
+
+- **Retries:** if your endpoint does not answer with `2xx`, Tilroy retries with an increasing delay.
+- **No event id:** a notification has no event or correlation id, and order is not guaranteed. Always fetch the current state by `tilroyId`, and make processing safe to run twice.
+- **Bulk changes:** large updates send one webhook per object, spread out over time to avoid peaks.
+- **Fallback sync:** run a periodic pull through the export endpoints to catch anything missed.
+  - Customers: `GET /export/customers` (recent changes stay available for 14 days).
+  - Orders: the order export endpoint of the Order API.
+  - Stock: the stock changes endpoint, which returns absolute quantities.
+- **High volume:** for shops with very frequent stock changes, polling the stock changes endpoint can be more efficient than webhooks.
+
+<Warning>
+  Don't rely on webhooks alone. Combine them with a periodic fallback sync so your system stays correct if a notification is missed.
+</Warning>
+
+## Contact
+
+Questions about webhooks or the Tilroy API: [integrations@tilroy.com](mailto:integrations@tilroy.com).

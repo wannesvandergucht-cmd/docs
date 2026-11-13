@@ -58,7 +58,8 @@
               "guides/erp-integration",
               "guides/stock-transfers",
               "guides/home-delivery",
-              "guides/cash-and-financial"
+              "guides/cash-and-financial",
+              "guides/webhooks"
             ]
           }
         ]
