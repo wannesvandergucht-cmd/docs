@@ -31,12 +31,7 @@ Contact [integrations@tilroy.com](mailto:integrations@tilroy.com) to request you
 
 ## Acceptance vs production
 
-Tilroy provides two separate environments for every integration:
-
-| Environment | Purpose |
-|---|---|
-| **ACC** (Acceptance) | Integration testing and validation. Safe to use with test data. |
-| **PROD** (Production) | Live retail operations. Use only when your integration is fully verified. |
+Tilroy is a SaaS platform if you want an acceptance environment it is another account on the same platform. It runs the same code on the same infrastructure, but data is strictly separated.
 
 Each environment has its own `Tilroy-Api-Key`. Your `x-api-key` may differ between environments as well. Treat these values as secrets and never use production credentials in test workflows.
 
