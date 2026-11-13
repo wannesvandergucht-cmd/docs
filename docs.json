@@ -4,19 +4,17 @@
   "theme": "luma",
   "logo": {
     "light": "/logo/logo-tilroy-kleur.png",
-    "dark": "/logo/logo-tilroy-wit.png",
+    "dark": "/logo/logo-tilroy-kleur.png",
     "href": "https://www.tilroy.com"
   },
   "favicon": "/favicon.png",
   "colors": {
     "primary": "#008542",
-    "light": "#8CEBA8",
     "dark": "#0A2A18"
   },
   "background": {
     "color": {
-      "light": "#FFFFFF",
-      "dark": "#061C0F"
+      "light": "#FFFFFF"
     }
   },
   "fonts": {
@@ -30,7 +28,8 @@
     }
   },
   "appearance": {
-    "default": "light"
+    "default": "light",
+    "strict": true
   },
   "navigation": {
     "tabs": [
