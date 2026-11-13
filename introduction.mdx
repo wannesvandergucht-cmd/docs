@@ -13,7 +13,7 @@ Tilroy is a cloud-based retail platform that acts as the central hub for your co
     Push products, prices, and stock movements from your ERP into Tilroy using asynchronous import endpoints.
   </Card>
   <Card title="Export data" icon="download">
-    Pull completed sales, stock transfers, and stock movements from Tilroy into your ERP or data warehouse using paginated export feeds.
+    Pull completed sales, stock transfers, and stock movements from Tilroy into your ERP or data warehouse using paginated export feeds. Use [webhooks](/guides/webhooks) to get notified when customers, orders, stock, or vouchers change.
   </Card>
   <Card title="Real-time sync" icon="bolt">
     Read and write customer profiles, validate and redeem vouchers, and interact with live shopping baskets using synchronous APIs.
@@ -25,10 +25,11 @@ Tilroy is a cloud-based retail platform that acts as the central hub for your co
 
 ## Key concepts
 
-Tilroy organises its API surface into three patterns. Understanding which pattern applies to each operation is the foundation of every integration:
+Tilroy organises its API surface into three patterns, plus webhooks that notify you of changes. Understanding which pattern applies to each operation is the foundation of every integration:
 
 - **Import endpoints** (`/import/*`) — Send data into Tilroy asynchronously. Tilroy validates the payload on receipt and returns `202 Accepted`. Processing happens in a queue. You are responsible for handling validation errors and monitoring processing status.
 - **Export endpoints** (`/export/*`) — Pull changes out of Tilroy in near real time. Responses are paginated, and messages are retained for 14 days. Use `dateExportedSince` to page through new events incrementally.
+- **Webhooks** — Get notified as soon as a customer, order, stock record, or voucher changes. A webhook carries identifiers only: you fetch the current data through the API. Combine webhooks with export endpoints as a fallback. See [Webhooks](/guides/webhooks).
 - **Synchronous APIs** — Interact with Tilroy directly in real time. Create or update a customer record, check a voucher balance, or read basket state. These calls return results immediately and are used where low latency matters.
 
 ## Next steps
