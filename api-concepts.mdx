@@ -4,7 +4,7 @@ sidebarTitle: "API Concepts"
 description: "Understand Tilroy's three API patterns: async import, paginated export feed, and synchronous real-time APIs — and when to use each one."
 ---
 
-Tilroy organises its API surface into three distinct patterns, each designed for a different integration scenario. Import endpoints let you push data into Tilroy asynchronously. Export endpoints let you pull a timestamped feed of changes out of Tilroy. Synchronous APIs give you direct, real-time read and write access to individual resources. Knowing which pattern to reach for — and how each one behaves under the hood — will save you significant debugging time as your integration grows.
+Tilroy organises its API surface into three distinct patterns, each designed for a different integration scenario. Import endpoints let you push data into Tilroy asynchronously. Export endpoints let you pull a timestamped feed of changes out of Tilroy. Synchronous APIs give you direct, real-time read and write access to individual resources.
 
 ## Import endpoints
 
@@ -14,7 +14,6 @@ When you POST a valid payload to an import endpoint, Tilroy validates the reques
 
 You are responsible for:
 - Handling any validation errors returned before the `202` (fix the payload and retry)
-- Setting up monitoring to detect processing failures after acceptance
 - Ensuring idempotency where required (use `idSource` fields to correlate records)
 
 ```http import-request.http
@@ -32,10 +31,6 @@ Content-Type: application/json
 ```json import-response.json
 HTTP/1.1 202 Accepted
 ```
-
-<Info>
-  A `202 Accepted` response confirms Tilroy received and queued the message. It does not confirm the data was written to your account. Monitor your integration and the ProcessLog API to detect downstream processing errors.
-</Info>
 
 ## Export endpoints
 
@@ -88,10 +83,6 @@ Authorization: Bearer YOUR_BEARER_TOKEN
 
 <Accordion title="Import validation errors (before 202)">
   If Tilroy returns an error response instead of `202 Accepted`, the payload failed validation. Inspect the error message, correct the payload, and resubmit. Do not retry the original payload — it will fail again for the same reason.
-</Accordion>
-
-<Accordion title="Import processing errors (after 202)">
-  Once Tilroy returns `202 Accepted`, processing errors will not surface in the HTTP response. Use the ProcessLog API to monitor for failures and set up alerting for your integration pipeline.
 </Accordion>
 
 <Accordion title="Export gaps and missed messages">

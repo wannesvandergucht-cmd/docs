@@ -64,21 +64,23 @@ Every sale line carries a full set of price fields so you can reconcile sell pri
 
 ## Payments
 
-The `payments` segment lists every payment method used to settle the sale. Use `paymenttype_code` to identify each method.
+The `payments` segment lists every payment method used to settle the sale. Use `payments.paymentType.code` to identify each method.
 
 ```json Example payment segment
-{
-  "payments": [
-    {
-      "paymenttype_code": "Cash",
-      "amount": 50.00
-    },
-    {
-      "paymenttype_code": "Bancontact/MC",
-      "amount": 25.00
-    }
-  ]
-}
+      "payments": [
+        {
+            "paymentType": {
+                "code": "Bancontact/MC",
+                "descriptions": [
+                    {
+                        "languageCode": "NL",
+                        "description": "Bancontact/Mister Cash"
+                    }
+                ],
+            },
+            "amount": 9
+        }
+    ]
 ```
 
 ### Gift Cards
