@@ -2,10 +2,35 @@
   "$schema": "https://mintlify.com/docs.json",
   "name": "Tilroy",
   "theme": "luma",
+  "logo": {
+    "light": "/logo/logo-tilroy-kleur.png",
+    "dark": "/logo/logo-tilroy-wit.png",
+    "href": "https://www.tilroy.com"
+  },
   "favicon": "/favicon.png",
   "colors": {
-    "primary": "#357de8",
-    "light": "#095fd9"
+    "primary": "#008542",
+    "light": "#8CEBA8",
+    "dark": "#0A2A18"
+  },
+  "background": {
+    "color": {
+      "light": "#FFFFFF",
+      "dark": "#061C0F"
+    }
+  },
+  "fonts": {
+    "heading": {
+      "family": "Poppins",
+      "weight": 600
+    },
+    "body": {
+      "family": "Roboto",
+      "weight": 400
+    }
+  },
+  "appearance": {
+    "default": "light"
   },
   "navigation": {
     "tabs": [
