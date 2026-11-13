@@ -1,0 +1,157 @@
+---
+title: "Stock Transfers Between Distribution Centers and Stores"
+sidebarTitle: "Stock Transfers"
+description: "Implement stock transfers between your distribution center and stores in Tilroy — covering push deliveries, store orders, store-to-store, and returns."
+---
+
+Tilroy models stock movements between locations as transfers. Whether your distribution center is pushing goods to a store, a store is ordering stock from the DC, or a store is returning goods, every flow uses the Transfer API (`POST /import/transfers` to send, `GET /export/transfers` to receive events). Understanding which flags to set — and when — determines how Tilroy books stock and when receipts are generated.
+
+## Push Delivery (DC → Store)
+
+Use a push delivery when your DC proactively sends goods to a store without a prior store request.
+
+<Steps>
+  <Step title="Send the transfer message">
+    POST your transfer to `/import/transfers`. Set `doReceipt: true` if the store should automatically receive the goods without manual confirmation. Leave it `false` if the store must confirm receipt in the POS before stock is booked in.
+
+    ```json push-transfer.json
+    {
+      "idSource": "TRF-2024-00123",
+      "status": "T",
+      "doReceipt": true,
+      "lines": [
+        {
+          "idSku": "SKU-001",
+          "quantityTransferred": 10
+        }
+      ]
+    }
+    ```
+  </Step>
+  <Step title="Tilroy books stock in transit">
+    After processing, Tilroy decrements available stock at the DC and marks the quantity as "in transfer" at the destination store. No stock is yet available for sale at the store.
+  </Step>
+  <Step title="Store receives the transfer">
+    When the store confirms receipt (or automatically, if `doReceipt: true`), Tilroy books the stock as available at the store. A transfer receipt event appears on `GET /export/transfers`. Use the `idSource` you supplied in step 1 to correlate the receipt event back to your original message.
+  </Step>
+  <Step title="Handle quantity differences">
+    If the store receives a quantity different from what was sent (`quantityReceived` ≠ `quantityTransferred`), Tilroy automatically creates a reverse transfer for the delta. The reverse transfer references the original via the `basedOn` field. Poll `GET /export/transfers` to capture both the receipt and any delta corrections.
+  </Step>
+</Steps>
+
+<Note>
+  Always set a unique `idSource` on every transfer you send. This is the key that lets you match export events back to your original ERP records.
+</Note>
+
+## Store Order / Pull Delivery (Store → DC)
+
+Use a pull delivery when a store requests stock from the DC. The request originates in Tilroy and your DC system fulfils it.
+
+<Steps>
+  <Step title="Store creates a transfer request">
+    A store operator creates a transfer request in the POS. This appears as a transfer message on `GET /export/transfers` with `isRequest: true` and `status: Q`. Pull this event into your DC system.
+  </Step>
+  <Step title="DC picks and sends the transfer">
+    Your DC system sends a transfer via `POST /import/transfers`, referencing the store's request using the `tilroyId` from the export event. Tilroy links the fulfilment to the original request.
+
+    ```json pull-transfer.json
+    {
+      "idSource": "TRF-DC-00456",
+      "tilroyId": "abc123-tilroy-request-id",
+      "status": "T",
+      "doReceipt": false,
+      "lines": [
+        {
+          "idSku": "SKU-001",
+          "quantityTransferred": 5
+        }
+      ]
+    }
+    ```
+  </Step>
+  <Step title="Store receives the goods">
+    The store confirms receipt in the POS. A receipt event appears on `GET /export/transfers`. Tilroy books the stock as available at the store.
+  </Step>
+  <Step title="Close or partially fulfil the request">
+    If the DC ships fewer items than requested, use `doCloseRequest: true` in the transfer message to close the request and prevent it from remaining open indefinitely. You can include `doCloseRequest` in the same transfer message as the partial fulfilment.
+  </Step>
+  <Step title="Auto-match open requests (optional)">
+    Set `doCheckOffOpenRequests: true` on your transfer to let Tilroy automatically match the transferred quantity against any open store requests for the same SKUs. This is useful when your DC sends bulk replenishments without matching individual requests.
+  </Step>
+</Steps>
+
+<Tip>
+  Export `GET /export/transfers` regularly to catch new store requests quickly. Slow DC responses increase the risk of stockouts at the store.
+</Tip>
+
+## Store-to-Store Transfers
+
+Store-to-store transfers follow the same pull flow as store orders. The requesting store creates a transfer request that appears on `GET /export/transfers`. Instead of your DC fulfilling the request, the sending store sends a transfer referencing the request's `tilroyId`.
+
+Tilroy manages stock availability at both locations throughout the flow:
+
+- Stock is reserved (or decremented) at the sending store when the transfer is initiated.
+- Stock becomes available at the receiving store once receipt is confirmed.
+- Quantity discrepancies generate reverse transfers exactly as they do in DC-to-store flows.
+
+No special configuration is needed — the same `isRequest`, `tilroyId`, `doReceipt`, and `doCloseRequest` flags apply.
+
+## Returns to DC
+
+Use this flow when a store sends goods back to the distribution center.
+
+<Steps>
+  <Step title="Store initiates the return transfer">
+    The store creates a transfer in the POS with `status: T`, directed toward the DC. Stock leaves the store immediately at this point — it is no longer available for sale at the store.
+  </Step>
+  <Step title="Goods are shipped to the DC">
+    The store physically ships the goods. Tilroy records the stock as "in transfer" between the store and the DC.
+  </Step>
+  <Step title="DC confirms receipt">
+    Once the DC has received the goods, send a receipt confirmation to Tilroy via `POST /import/transfers`. Tilroy books the stock back into the DC's available inventory.
+
+    ```json dc-receipt.json
+    {
+      "idSource": "RET-DC-00789",
+      "tilroyId": "store-return-tilroy-id",
+      "status": "T",
+      "doReceipt": true,
+      "lines": [
+        {
+          "idSku": "SKU-001",
+          "quantityReceived": 3
+        }
+      ]
+    }
+    ```
+  </Step>
+</Steps>
+
+## Home Delivery Orders
+
+When a customer places a Home Delivery order, Tilroy automatically creates a transfer request from the DC to the webshop location. Your DC system picks this up and fulfils it like a standard pull delivery.
+
+- Poll `GET /export/transfers` for transfer requests with `isRequest: true` linked to the webshop location.
+- Send a transfer via `POST /import/transfers` referencing the request's `tilroyId`.
+- Set `doReceipt: true` to auto-receive at the webshop, making the stock available for dispatch.
+- Set `doDispatch: true` to automatically dispatch the order once the transfer is received. This creates the dispatch sale in Tilroy.
+- Partial delivery is fully supported — send multiple transfers against the same request, and each generates a separate dispatch sale. Use `doCloseRequest: true` on the final transfer to close the request.
+
+<Info>
+  Dispatch sales have `isDispatch: true` and contain type P lines (turnover). Each dispatch sale's lines reference the original order lines via `idTillBasketLineOrig`.
+</Info>
+
+## Key Fields Reference
+
+| Field | Description |
+|-------|-------------|
+| `idSource` | Your unique identifier for the transfer record. Required for correlating export events back to your ERP. Without it, Tilroy creates a new record on every import. |
+| `isRequest` | `true` on store-initiated transfer requests (status Q). Set by Tilroy; visible on export events. |
+| `doReceipt` | `true` to auto-receive at the destination without manual POS confirmation. |
+| `doCloseRequest` | `true` to close an open transfer request after partial or complete fulfilment. |
+| `doCheckOffOpenRequests` | `true` to let Tilroy automatically match transferred quantities against open store requests for the same SKUs. |
+| `doDispatch` | `true` to automatically dispatch a Home Delivery order once the associated transfer is received. |
+| `quantityTransferred` | The quantity shipped from the source location. |
+| `quantityReceived` | The quantity confirmed received at the destination. Differences from `quantityTransferred` trigger a reverse transfer. |
+| `basedOn` | Reference to the original transfer on a delta/reverse transfer generated by Tilroy. |
+| `tilroyId` | Tilroy's internal ID for a transfer record. Use this to reference an existing request when sending a fulfilment transfer. |

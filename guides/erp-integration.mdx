@@ -1,0 +1,143 @@
+---
+title: "ERP Integration with Tilroy: Patterns and Getting Started"
+sidebarTitle: "ERP Integration"
+description: "Connect your ERP to Tilroy using import and export APIs. Learn the integration patterns, message flow, and responsibilities for a reliable integration."
+---
+
+ERP integration with Tilroy follows a bidirectional model — push data from your ERP into Tilroy via import endpoints, and pull Tilroy data (sales, transfers, stock movements) via export endpoints. For real-time operations such as customer lookups and voucher checks, synchronous APIs are available alongside the asynchronous import/export layer.
+
+## Integration Patterns
+
+Tilroy exposes three distinct integration patterns. Choose the right pattern based on whether you need to send data to Tilroy, receive data from Tilroy, or interact with Tilroy in real time.
+
+<Tabs>
+  <Tab title="ERP → Tilroy (Import)">
+    Use `/import/*` endpoints to push data from your ERP into Tilroy. Every import is **asynchronous**.
+
+    <Steps>
+      <Step title="Send your message">
+        POST your payload to the relevant `/import/*` endpoint with the required authentication headers.
+      </Step>
+      <Step title="Tilroy validates the message">
+        If the message is invalid, the API returns an error immediately. Fix the payload and resend — the message was not queued.
+      </Step>
+      <Step title="Receive 202 Accepted">
+        A valid message returns `202 OK`. Tilroy has accepted the message and queued it for processing. This does **not** mean processing is complete.
+      </Step>
+      <Step title="Monitor for processing errors">
+        Processing happens asynchronously. You are responsible for setting up monitoring and handling any errors that arise after the 202 response. Use the ProcessLog API to track processing status.
+      </Step>
+    </Steps>
+
+    <Warning>
+      A `202` response confirms the message was accepted, not that it was successfully processed. Always monitor the ProcessLog API for downstream errors.
+    </Warning>
+  </Tab>
+  <Tab title="Tilroy → ERP (Export)">
+    Use `/export/*` endpoints to pull data from Tilroy into your ERP. Every export feed is **asynchronous and near real-time**.
+
+    <Steps>
+      <Step title="Poll the export endpoint">
+        Send a GET request to the relevant `/export/*` endpoint. Results are ordered by modification timestamp.
+      </Step>
+      <Step title="Filter with dateExportedSince">
+        Pass `dateExportedSince` as a query parameter to retrieve only messages created or modified after your last successful pull.
+      </Step>
+      <Step title="Page through results">
+        Use the `count` parameter (default 10, max 100) to control page size. Continue paginating until you receive fewer results than your requested page size.
+      </Step>
+      <Step title="Process and store messages">
+        Store each message locally before processing so you can reprocess without re-fetching if something fails downstream.
+      </Step>
+    </Steps>
+
+    <Note>
+      Export messages are available for **14 days**. Pull regularly to avoid missing data.
+    </Note>
+  </Tab>
+  <Tab title="Real-Time Sync">
+    Some APIs operate synchronously — they respond immediately with live data and are suitable for interactive flows such as checkout, loyalty lookups, and voucher validation.
+
+    | API | Use case |
+    |-----|----------|
+    | Customer API | Read and update customer profiles in real time |
+    | Voucher API | Validate and redeem vouchers at point of sale |
+    | Basket API | Manage active shopping baskets across channels |
+
+    Synchronous APIs require the same authentication headers as import/export endpoints. The Customer API additionally requires an `Authorization: Bearer <token>` header — see the [Authentication API](#) for token generation.
+  </Tab>
+</Tabs>
+
+## Data You Can Import
+
+Send data from your ERP into Tilroy using these import endpoints:
+
+- **Products** — POST `/import/products` (Product API): create or update product records, variants, and SKUs.
+- **Prices** — POST `/import/prices` (Price API): push standard prices and promotional prices with shop, country, or global scope.
+- **Stock transfers** — POST `/import/transfers` (Transfer API): initiate transfers from your distribution center to stores, or respond to store transfer requests.
+- **Stock corrections** — POST `/import/stockcorrections` (Stock API): apply manual stock corrections when counts differ from system records.
+
+## Data You Can Export
+
+Pull data from Tilroy into your ERP using these export endpoints:
+
+- **Sales** — GET `/export/sales` (Sale API): completed POS transactions, including line details, payments, and promotions.
+- **Transfers (receipts)** — GET `/export/transfers` (Transfer API): transfer events, including when stores receive goods and any delta corrections.
+- **Stock movements** — GET `/export/stockmovements` (Stock API): all stock change events (sales, corrections, receipts, reservations, initialisations).
+- **Money transfers** — GET `/export/moneytransfer` (Shop API): cash movements between register locations and cash position changes.
+- **Petty cash** — GET `/export/pettycashes` (Shop API): small cash in/out transactions made from the register.
+- **Cash-ups** — GET `/export/cashups` (Shop API): daily register counts at start and end of day, including any discrepancies.
+
+## Working with Export Endpoints
+
+All export endpoints share the same pagination and filtering conventions. Use `dateExportedSince` to implement incremental pulls — only fetch what has changed since your last successful sync.
+
+Here is a sample request that retrieves up to 100 sales modified after a given timestamp:
+
+```http request.http
+GET /export/sales?dateExportedSince=2024-06-01T08:00:00Z&count=100
+x-api-key: <your-profile-key>
+Tilroy-Api-Key: <your-account-key>
+```
+
+**Pagination logic:** if the response contains exactly `count` records, there are likely more pages available. Advance `dateExportedSince` to the timestamp of the last record you received and repeat the request. When the response returns fewer records than `count`, you have reached the end of the current feed.
+
+<Tip>
+  Store each page of export results to local storage or a queue before processing. This lets you reprocess records without re-fetching from Tilroy if a downstream step fails.
+</Tip>
+
+<Note>
+  All export messages are retained for **14 days** from the time they are generated. If your integration goes offline for more than 14 days, you will have a gap in your data. Set up alerts to detect stalled export jobs early.
+</Note>
+
+## Error Handling
+
+Understanding the difference between validation errors and processing errors is critical to building a reliable integration.
+
+<Tabs>
+  <Tab title="Import Errors">
+    **Validation errors (non-202 response)**
+
+    If Tilroy returns a non-202 HTTP status, the message failed validation and was never queued. The response body contains details about what was invalid. Fix the payload and resend the entire message.
+
+    **Processing errors (post-202)**
+
+    A `202` response means the message passed validation and entered the queue. Processing errors that occur after this point will not surface as HTTP errors on your original request. Monitor the ProcessLog API and set up alerting so processing failures are caught promptly.
+
+    ```json example-validation-error.json
+    {
+      "status": 400,
+      "message": "Field 'idSource' is required for price updates."
+    }
+    ```
+  </Tab>
+  <Tab title="Export Errors">
+    Export endpoints are **idempotent** — you can re-fetch the same window of messages as many times as needed without side effects. If your processing fails after a successful fetch, simply re-fetch the same `dateExportedSince` window and reprocess.
+
+    Track your `dateExportedSince` cursor in persistent storage. Only advance the cursor once you have successfully processed and committed a page of results to your ERP. This prevents gaps caused by partial failures.
+
+    <Warning>
+      Advancing your `dateExportedSince` cursor before confirming successful processing can cause you to skip records permanently if messages fall outside the 14-day retention window before you retry.
+    </Warning>
+  </Tab>
+</Tabs>

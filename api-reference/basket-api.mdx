@@ -1,0 +1,81 @@
+---
+title: "Basket API: Build and Manage Shopping Baskets in Tilroy"
+sidebarTitle: "Basket API"
+description: "Use the Basket API to create shopping baskets in Tilroy from your webshop or custom application, applying Tilroy's pricing and promotion engine."
+---
+
+The Basket API lets you create and manage shopping baskets in Tilroy from your own system — webshop, kiosk, or custom POS. Tilroy applies its promotion and pricing engine to the basket in real time, so every basket your application creates benefits from the same pricing logic, discount rules, and loyalty promotions as a native Tilroy checkout.
+
+## What the Basket API Does
+
+Use the Basket API to:
+
+- **Create a basket** — open a new shopping session associated with a shop
+- **Add and remove lines** — add products with quantities; Tilroy resolves pricing and applies any active promotions automatically
+- **Apply Tilroy promotions** — discounts, vouchers, and loyalty rules are evaluated against the basket in real time
+- **Check out the basket** — complete the basket to create a **sale** in Tilroy; if the basket contains order lines, Tilroy also creates the corresponding **order** records
+
+The Basket API is a **synchronous API** — every call returns an immediate response, making it suitable for interactive checkout flows where you need to display live pricing and promotion feedback to the customer.
+
+## Use Cases
+
+<CardGroup cols={2}>
+  <Card title="External Webshop" icon="globe">
+    Use Tilroy as your pricing and promotion backend. Your webshop calls the Basket API to build the basket, and Tilroy returns the correctly priced and discounted totals.
+  </Card>
+  <Card title="Custom Checkout" icon="cash-register">
+    Build a bespoke checkout experience on top of Tilroy's transaction engine without replicating pricing or promotion logic in your own application.
+  </Card>
+  <Card title="Kiosk Applications" icon="desktop">
+    Drive self-service kiosks with real-time basket management, letting customers browse, select, and pay while Tilroy handles all pricing and stock validation.
+  </Card>
+  <Card title="Omnichannel Baskets" icon="arrows-split-up-and-left">
+    Start a basket in one channel and complete it in another — Tilroy maintains basket state centrally across all your touchpoints.
+  </Card>
+</CardGroup>
+
+## Flow
+
+Follow these steps to create a basket and complete a transaction using the Basket API:
+
+<Steps>
+  <Step title="Create a basket">
+    Open a new basket in Tilroy, specifying the shop context. Tilroy returns a basket identifier you use for all subsequent calls in this session.
+  </Step>
+  <Step title="Add lines">
+    Add one or more product lines to the basket, each with a SKU and quantity. Tilroy validates the product and resolves the applicable price immediately.
+  </Step>
+  <Step title="Tilroy applies pricing and promotions">
+    With each line added or updated, Tilroy evaluates all active promotions and pricing rules. The basket response always reflects the current, fully-discounted state — including any multi-buy promotions, loyalty discounts, or voucher redemptions.
+  </Step>
+  <Step title="Check out">
+    Submit the basket for checkout. Tilroy creates a completed **sale** record and, if any lines are order lines (home delivery or click and collect), the corresponding **order** records.
+  </Step>
+</Steps>
+
+## Authentication
+
+All Basket API calls require the standard Tilroy API headers:
+
+| Header | Description |
+|---|---|
+| `Tilroy-Api-Key` | Your account identifier — separate keys for acceptance (ACC) and production (PROD) |
+| `x-api-key` | Your profile/access control key |
+
+If the basket is associated with a known, authenticated customer, include the customer's bearer token as well:
+
+| Header | Description |
+|---|---|
+| `Authorization: Bearer <token>` | Customer bearer token obtained from the [Authentication API](https://tilroy-apidocs-prd.s3.eu-west-1.amazonaws.com/authenticationapi.html) |
+
+<Info>
+Including the bearer token links the basket to a specific customer profile, enabling loyalty tracking, personalized promotions, and customer-level pricing where applicable. Without it, the basket is treated as anonymous.
+</Info>
+
+<Warning>
+Always use your **acceptance (ACC)** environment and keys during development and testing. Never point test traffic at your production `Tilroy-Api-Key`. Contact [integrations@tilroy.com](mailto:integrations@tilroy.com) to request your API keys for both environments.
+</Warning>
+
+<Note>
+For the complete endpoint reference, request/response schemas, and worked examples, refer to the [Basket API hosted documentation](https://tilroy-apidocs-prd.s3.eu-west-1.amazonaws.com/basketapi.html).
+</Note>

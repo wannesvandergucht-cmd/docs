@@ -1,0 +1,66 @@
+---
+title: "Order API: Home Delivery and Click and Collect Orders"
+sidebarTitle: "Order API"
+description: "Retrieve and manage Tilroy orders for home delivery and click and collect. Understand order line structures, dispatch sales, and partial shipment handling."
+---
+
+The Order API lets you retrieve and manage orders placed in Tilroy — whether for home delivery or in-store collection. Because Tilroy records orders as part of the sale flow, understanding how orders relate to sales and dispatch events is essential for correct integration with your ERP or fulfillment system.
+
+## What Is an Order?
+
+In Tilroy, an **order** is a commitment to deliver goods or services at a later time — no immediate handover occurs at the point of sale. This distinguishes it from a regular **sale**, where the customer takes the goods immediately.
+
+The key difference has direct financial implications: **turnover is not recognized when the order is placed**. It is only recognized when the goods are dispatched (home delivery) or picked up in store (click and collect). Until that moment, the order line sits in the system as a placeholder with no stock or turnover impact.
+
+## Order Types
+
+Tilroy supports two order fulfillment methods:
+
+| Type | Code | Description |
+|------|------|-------------|
+| Home Delivery | `HD` | Goods are shipped to the customer's address |
+| Click and Collect | `CC` | Customer orders online or in-store and collects at a nominated store |
+
+## Order Lines in a Sale
+
+When a customer places an order at the point of sale, the transaction is recorded as a regular sale containing one or more **type `T` (text) lines**. These lines represent the ordered items but produce no immediate stock movement or turnover.
+
+You identify the fulfillment method on each type `T` line via the `collectMethod` object:
+
+- `collectMethod.isHomeDelivery: true` — the line is a home delivery order
+- `collectMethod.isClickAndCollect: true` — the line is a click and collect order
+
+The full order detail for each line is contained in the `lines.order` segment. This segment holds the order-specific fields for the line, such as pricing, quantity, and product references. Refer to the [Order API hosted documentation](https://tilroy-apidocs-prd.s3.eu-west-1.amazonaws.com/orderapi.html) for the complete field definitions.
+
+## Dispatch Sale
+
+When goods for a home delivery order are shipped, Tilroy creates a **dispatch sale** to record the turnover and stock movement. Recognize a dispatch sale by the `isDispatch: true` flag at the sale header level.
+
+In a dispatch sale:
+
+- Lines are **type `P`** (regular product lines) — turnover and stock are now recognized
+- Each dispatch line carries an `idTillBasketLineOrig` field that references the original type `T` order line it is fulfilling
+- The `doDispatch` flag can be set to trigger automatic dispatch processing
+
+**Partial shipments** are fully supported. If an order of three items ships in two separate batches, Tilroy creates two separate dispatch sales. Each dispatch sale references the original order lines via `idTillBasketLineOrig`, allowing you to match every dispatched unit back to its source order.
+
+<Tip>
+Use `idTillBasketLineOrig` to reconcile dispatch sales against their originating orders in your ERP. This is the key linking field for partial fulfillment scenarios.
+</Tip>
+
+## Click and Collect Pickup
+
+When a customer collects their click and collect order in store, Tilroy records a **pickup sale**. Like a dispatch sale, the pickup sale contains **type `P` lines** — this is when turnover and stock movement are recognized for click and collect orders.
+
+The pickup sale references the original order lines, giving you a complete audit trail from order placement through to fulfillment.
+
+## Advance Payments
+
+Customers may pay a deposit when placing an order. In Tilroy, advance payments use the payment type code `Voorschot` (or `Acompte`).
+
+- When the advance is **collected**, it appears as a **negative amount** in the payments segment of the order sale (representing money received)
+- When the advance is **applied** against the final dispatch or pickup sale, it appears as a **positive amount** in the payments segment of that sale
+
+<Note>
+For the complete JSON schemas, query parameters, and worked request/response examples, refer to the [Order API hosted documentation](https://tilroy-apidocs-prd.s3.eu-west-1.amazonaws.com/orderapi.html).
+</Note>

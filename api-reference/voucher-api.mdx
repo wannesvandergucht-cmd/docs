@@ -1,0 +1,60 @@
+---
+title: "Voucher API: Manage Gift Vouchers and Loyalty in Tilroy"
+sidebarTitle: "Voucher API"
+description: "Create, redeem, and query gift vouchers and loyalty instruments in Tilroy, including commercial gestures and return incentive vouchers."
+---
+
+The Voucher API gives you real-time control over gift vouchers and loyalty instruments in Tilroy. Use it to check balances, issue vouchers, and process redemptions from any channel — whether that is POS, webshop, or a custom loyalty integration. Vouchers appear throughout Tilroy's transaction layer, from the moment a gift card is sold at the register through to being used as a payment method or issued automatically as a return incentive.
+
+## Voucher Types
+
+Tilroy supports several distinct voucher instruments, each appearing in a different part of the transaction record:
+
+<CardGroup cols={2}>
+  <Card title="Gift Vouchers (Sold)" icon="gift">
+    Gift vouchers sold at POS appear as **line type G** in the sale export. The sale records the voucher code and the value sold. The customer receives a voucher they can spend in a future transaction.
+  </Card>
+  <Card title="Vouchers Used as Payment" icon="credit-card">
+    When a customer redeems a gift voucher at checkout, it appears in the **payments segment** of the sale, identified by the appropriate payment type code (for example, `Cadeau`).
+  </Card>
+  <Card title="Commercial Gestures" icon="handshake">
+    Commercial gesture vouchers are issued to customers without a corresponding sale — for example, as a goodwill compensation. These are created directly via the Voucher API and carry a value the customer can redeem later.
+  </Card>
+  <Card title="Return Incentive Vouchers" icon="arrow-uturn-left">
+    Return incentive vouchers are issued automatically by Tilroy's promotion engine when a customer makes a qualifying return. They appear under the **activations segment** in the sale export.
+  </Card>
+</CardGroup>
+
+## Real-Time API
+
+The Voucher API is **synchronous** — requests are processed in real time, not queued. This makes it suitable for live POS and webshop checkout flows where you need an immediate response.
+
+Use the Voucher API to:
+
+- **Check a voucher balance** before presenting payment options to the customer
+- **Redeem a voucher** as part of a checkout transaction
+- **Issue a new voucher** programmatically (for commercial gestures or integrations)
+- **Query voucher history** to support customer service lookups
+
+## Voucher in Sales
+
+When you export sales from Tilroy, voucher activity is recorded in the **vouchers segment** of each sale record. Each entry in this segment includes a `used` flag:
+
+| Flag value | Meaning |
+|---|---|
+| `used: true` | The voucher was evaluated by the promotion engine **and** triggered a discount or benefit in this transaction. |
+| `used: false` | The voucher was evaluated but did **not** trigger a promotion (for example, conditions were not met). |
+
+Use the `used` flag to accurately reconcile which promotions and vouchers had a real financial impact on each sale.
+
+## Activations
+
+When a customer qualifies for a return incentive promotion, Tilroy automatically issues a voucher and records it under the **activations segment** of the sale export. This segment lists each voucher issued — including the voucher code, value, and validity window — so your CRM or loyalty platform can notify the customer of their new voucher.
+
+<Tip>
+  Monitor the activations segment in your sale export pipeline to detect newly issued return incentive vouchers and trigger customer-facing notifications (email, app push, SMS) in near real time.
+</Tip>
+
+## Full API Reference
+
+For the complete endpoint specification, request and response schemas, and worked examples, see the [Voucher API reference](https://tilroy-apidocs-prd.s3.eu-west-1.amazonaws.com/voucherapi.html).

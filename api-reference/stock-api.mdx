@@ -1,0 +1,75 @@
+---
+title: "Stock API: Import Corrections and Export Movements"
+sidebarTitle: "Stock API"
+description: "Import stock corrections into Tilroy and export a full feed of stock movements — including sales, transfers, reservations, and initialisations."
+---
+
+The Stock API gives you full visibility into inventory across your retail operation. Use it to push stock corrections and initialisation levels into Tilroy from your ERP or warehouse system, and to pull a timestamped feed of every stock movement Tilroy records — from sales and transfers to reservations and manual corrections.
+
+## Import Endpoints
+
+Send stock data to Tilroy using the import endpoint. All import calls are asynchronous: Tilroy validates the payload on receipt, returns `202 OK`, and processes the message in a background queue. You are responsible for handling any validation errors and setting up monitoring.
+
+**POST /import/stockcorrections** — Submit stock corrections to update available stock levels in Tilroy.
+
+When Tilroy receives a stock correction, it updates the available stock for the affected SKU and location. Use the `Initialisation` movement type to set opening stock levels when you first go live or when you need to reset stock to a known position.
+
+<Note>
+  Always monitor your import pipeline for validation errors. A `202 OK` response confirms receipt, not successful processing. Check the ProcessLog API for processing outcomes.
+</Note>
+
+For the full request schema, see the [Stock API reference](https://tilroy-apidocs-prd.s3.eu-west-1.amazonaws.com/stockapi.html).
+
+## Export Endpoints
+
+**GET /export/stockmovements** — Retrieve a paginated feed of all stock movements recorded in Tilroy.
+
+Every inventory change generates a stock movement record. Use this endpoint to reconcile your ERP or warehouse system with Tilroy's current stock state.
+
+### Stock Movement Types
+
+| Type | Description |
+|---|---|
+| **Correction** | A manual stock correction applied in Tilroy or imported via the Stock API. |
+| **Initialisation** | Stock set to an exact quantity via an initialisation message — used to establish opening stock positions. |
+| **Receipt** | Goods received into a store or location, typically from a DC transfer. |
+| **Reservation** | A change in reserved stock, such as a customer order being placed or cancelled. |
+| **Sale** | A stock reduction resulting from a completed sale transaction. |
+| **Transfer** | A stock change caused by a transfer between locations (DC to store, store to store, or return to DC). |
+
+## DC Stock Import
+
+When your distribution centre sends stock data to Tilroy, it should report the **current available stock position** — that is, the quantity on hand excluding any reservations your own DC systems are tracking. Do not subtract customer order reservations managed by Tilroy; Tilroy maintains its own reservation layer for customer orders and adds those on top of the stock figure you provide.
+
+The recommended flow is:
+
+<Steps>
+  <Step title="DC detects a stock change">
+    Your warehouse or ERP system detects a change in available stock for one or more SKUs.
+  </Step>
+  <Step title="Send a stock correction">
+    POST a stock correction to `/import/stockcorrections` with the current available quantity (excluding Tilroy-managed order reservations).
+  </Step>
+  <Step title="Tilroy applies reservations">
+    Tilroy adds its known customer order reservations on top of your reported available figure to compute the net available stock shown in POS and webshop channels.
+  </Step>
+</Steps>
+
+## Filtering Export Results
+
+Use the following parameters to control your export queries:
+
+| Parameter | Description |
+|---|---|
+| `dateExportedSince` | Return only movements exported after this timestamp. Use this to poll for new movements since your last sync. |
+| `count` | Number of records per page. Default is 10; maximum is 100. |
+
+Stock movement messages are retained for **14 days**. Pull frequently enough that you do not fall behind the retention window.
+
+<Tip>
+  Use `dateExportedSince` in combination with your last processed timestamp to implement reliable incremental polling without reprocessing previously seen records.
+</Tip>
+
+## Full API Reference
+
+For the complete endpoint specification, request and response schemas, and field-level documentation, see the [Stock API reference](https://tilroy-apidocs-prd.s3.eu-west-1.amazonaws.com/stockapi.html).

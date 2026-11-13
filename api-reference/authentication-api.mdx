@@ -1,0 +1,64 @@
+---
+title: "Authentication API: Get Bearer Tokens for Customer Access"
+sidebarTitle: "Authentication API"
+description: "Use the Authentication API to obtain bearer tokens for customer-level access in Tilroy, enabling secure per-customer data retrieval and updates."
+---
+
+The Authentication API issues bearer tokens that authorize access to customer-scoped endpoints in Tilroy — most notably the Customer API. When your application needs to read or update data on behalf of a specific customer, call this API first to obtain a token, then pass that token as the `Authorization` header on subsequent Customer API requests.
+
+## The /tokens Endpoint
+
+**POST /tokens** — Exchange customer credentials for a bearer token.
+
+Send the customer's identifying credentials in your request body. On success, the Authentication API returns a token scoped to that specific customer. The token is time-limited — check the `expiresAt` or equivalent field in the response and refresh it before it expires.
+
+```http request.http
+POST /tokens
+x-api-key: <your-profile-key>
+Tilroy-Api-Key: <your-account-key>
+Content-Type: application/json
+```
+
+Once you have the token, include it on every Customer API request for that customer:
+
+```http customer-request.http
+GET /customers/{id}
+x-api-key: <your-profile-key>
+Tilroy-Api-Key: <your-account-key>
+Authorization: Bearer <token>
+```
+
+## When to Use Per-Customer Tokens
+
+Use the Authentication API to get a per-customer token when:
+
+- Your application lets customers **view or edit their own profile** (webshop account page, loyalty app, self-service portal)
+- You are building a **customer-facing flow** where the action should be authorised as that specific customer
+- You need to **scope access** so that one customer's token cannot be used to access another customer's data
+
+<Steps>
+  <Step title="Customer authenticates in your app">
+    The customer logs in to your webshop or application using their credentials.
+  </Step>
+  <Step title="Request a bearer token">
+    POST to `/tokens` with the customer's credentials. Store the returned token securely in your session layer.
+  </Step>
+  <Step title="Call the Customer API">
+    Include the token as `Authorization: Bearer <token>` on all Customer API calls for this session.
+  </Step>
+  <Step title="Refresh when expired">
+    When the token expires, call `/tokens` again to obtain a fresh token. Do not store tokens beyond their validity window.
+  </Step>
+</Steps>
+
+## Service-Level Access
+
+If you are building a **background integration** — such as a scheduled sync between Tilroy and a CRM, loyalty platform, or data warehouse — you do not need per-customer tokens. Instead, contact [integrations@tilroy.com](mailto:integrations@tilroy.com) to request a **service-level token**.
+
+<Info>
+  A service-level token is not scoped to a single customer and can be used to read and update any customer record in your Tilroy account. Use it only in secure server-side contexts, never in client-side or browser code.
+</Info>
+
+## Full API Reference
+
+For the complete endpoint specification, request payload schema, token response fields, and error codes, see the [Authentication API reference](https://tilroy-apidocs-prd.s3.eu-west-1.amazonaws.com/authenticationapi.html).

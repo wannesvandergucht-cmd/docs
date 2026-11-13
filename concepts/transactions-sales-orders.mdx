@@ -1,0 +1,202 @@
+---
+title: "Understanding Sales, Orders, and Baskets in Tilroy"
+sidebarTitle: "Sales & Orders"
+description: "Understand how Tilroy models baskets, sales, and orders — including home delivery, click and collect, dispatch sales, and advance payments."
+---
+
+Tilroy uses three distinct concepts to represent retail transactions at different stages of their lifecycle. Understanding the difference between a basket, a sale, and an order is essential for correctly interpreting exported data and building reliable ERP integrations.
+
+## Terminology
+
+<CardGroup cols={3}>
+  <Card title="Basket" icon="shopping-basket">
+    A transaction in progress — online or in-store. Managed in real time via the Basket API. When the customer completes checkout, the basket becomes a sale.
+  </Card>
+  <Card title="Sale" icon="receipt">
+    A completed financial transaction recorded in the POS. A sale is final and cannot be altered after it is written. It records turnover, payments, and applied promotions.
+  </Card>
+  <Card title="Order" icon="truck">
+    A commitment to deliver goods or services at a later point — there is no immediate handover of stock. Orders are registered within a sale and fulfilled via one or more dispatch sales.
+  </Card>
+</CardGroup>
+
+## Sale Structure
+
+Every sale contains four top-level segments: **customer**, **shop**, **lines**, and **payments**.
+
+The `isVatInclusive` flag controls how prices are interpreted across the entire sale:
+
+- `true` — B2C mode. All prices are VAT-inclusive (retail).
+- `false` — B2B mode. All prices are VAT-exclusive (wholesale).
+
+### Line Types
+
+Each line in the `lines` array has a `type` field that determines how Tilroy treats it for stock and turnover purposes.
+
+| Type | Name | Description |
+|------|------|-------------|
+| `P` | Product | Regular product sale. Counts as turnover. Triggers a stock deduction. |
+| `R` | Return | Product returned by the customer. Counts as turnover (negative amount). Triggers a stock addition. |
+| `T` | Text / Order | Used for order lines (home delivery or click and collect). No immediate turnover or stock change at creation. |
+| `G` | Gift Voucher | Sale of a gift voucher. No stock impact; generates a voucher record. |
+
+**Sales turnover** is the sum of all `P` and `R` lines using the `lineTotalSell` field.
+
+## Sale Price Fields
+
+Every sale line carries a full set of price fields so you can reconcile sell price, cost, promotions, and VAT without additional lookups.
+
+| Field | Description |
+|-------|-------------|
+| `sellPrice` | The actual unit price charged to the customer. |
+| `costPrice` | The cost price of the item at time of sale. |
+| `standardPrice` | The standard (non-promoted) sell price for the item. |
+| `standardUnitPrice` | The standard price per unit (relevant for volume pricing). |
+| `promoPrice` | The promotional price for the item, if a promo was active. |
+| `manualPrice` | A price manually overridden by the cashier. |
+| `standardPriceOrig` | The original standard price before any modification. |
+| `lineTotalCost` | Total cost for this line (costPrice × quantity). |
+| `lineTotalStandard` | Total at standard price for this line. |
+| `lineTotalSell` | Total actually charged for this line. Used for turnover calculations. |
+| `lineTotalDiscount` | Total discount applied on this line (lineTotalStandard − lineTotalSell). |
+| `lineTotalVatExcl` | Line total excluding VAT. |
+| `lineTotalVat` | VAT amount for this line. |
+
+## Payments
+
+The `payments` segment lists every payment method used to settle the sale. Use `paymenttype_code` to identify each method.
+
+```json Example payment segment
+{
+  "payments": [
+    {
+      "paymenttype_code": "Cash",
+      "amount": 50.00
+    },
+    {
+      "paymenttype_code": "Bancontact/MC",
+      "amount": 25.00
+    }
+  ]
+}
+```
+
+### Gift Cards
+
+Gift cards appear in two places depending on the direction of the transaction:
+
+- **Sold** — the sale of a gift voucher appears as a **type `G` line** in the `lines` segment.
+- **Used as payment** — when a customer pays with a gift card, it appears as an entry in the **`payments` segment** with `paymenttype_code = "Cadeau"`.
+
+### Advance Payments
+
+Advances (deposits) are recorded in the payments segment with `paymenttype_code = "Voorschot"` (or `"Acompte"`):
+
+- When the **advance is collected**: the amount appears as a **negative value** in the payments segment of the original order sale.
+- When the **advance is applied** at dispatch: it appears as a **positive value** in the payments segment of the dispatch sale.
+
+### Vouchers
+
+The `vouchers` segment on a sale line contains vouchers that were evaluated during checkout. The `used` flag tells you whether the voucher actually triggered a promotion — a voucher can be present but not applied if its conditions were not met.
+
+### Activations
+
+The `activations` segment records any return incentive vouchers issued to the customer as part of the transaction (for example, a voucher generated when returning an item).
+
+## Orders
+
+Orders represent a customer's commitment to receive goods later. Tilroy supports two fulfillment methods:
+
+- **Home Delivery (HD)** — goods are shipped to the customer's address.
+- **Click and Collect (CC)** — customer picks up the goods at a store.
+
+### Identifying Order Lines
+
+Order lines are always type `T`. Inspect the `collectMethod` sub-object to distinguish the fulfillment type:
+
+- `lines.collectMethod.isHomeDelivery = true` → Home Delivery line
+- `lines.collectMethod.isClickAndCollect = true` → Click and Collect line
+
+The full order detail — price, quantity, SKU, and delivery address — is available in the `lines.order` segment.
+
+### Advance Payment on an Order
+
+When a customer pays a deposit at the time of ordering, the payment appears in the sale's `payments` segment:
+
+```json Advance payment in order sale
+{
+  "payments": [
+    {
+      "paymenttype_code": "Voorschot",
+      "amount": -50.00
+    }
+  ]
+}
+```
+
+A negative amount here means the advance was collected from the customer.
+
+### Dispatch Sales
+
+For Home Delivery orders, Tilroy generates a **dispatch sale** when the goods leave the warehouse or store. A dispatch sale:
+
+- Has `isDispatch: true` at the sale level.
+- Contains lines of type **`P`** (these are now turnover-generating, unlike the original type `T` lines).
+- Includes `idTillBasketLineOrig` on each dispatch line, which references the `id` of the original type `T` order line.
+
+If a shipment is split, Tilroy generates **multiple dispatch sales** — one per partial shipment. Each dispatch sale references the same original order lines via `idTillBasketLineOrig`.
+
+### Invoices and Credit Notes
+
+- A sale with `type = "I"` is an **invoice**.
+- A sale with `type = "I"` and a **negative total** is a **credit note**.
+
+## Full Example: Order Sale with Advance Payment
+
+The following example shows a sale containing a Home Delivery order line (type `T`) and an advance payment collected from the customer.
+
+```json Order sale with advance payment
+{
+  "isVatInclusive": true,
+  "type": "I",
+  "isDispatch": false,
+  "customer": {
+    "id": 1042
+  },
+  "shop": {
+    "code": "WEB"
+  },
+  "lines": [
+    {
+      "type": "T",
+      "idTillBasketLine": "line-001",
+      "sellPrice": 199.99,
+      "standardPrice": 199.99,
+      "lineTotalSell": 199.99,
+      "lineTotalDiscount": 0.00,
+      "lineTotalVatExcl": 165.28,
+      "lineTotalVat": 34.71,
+      "collectMethod": {
+        "isHomeDelivery": true,
+        "isClickAndCollect": false
+      },
+      "order": {
+        "idSku": "SKU-8821",
+        "quantity": 1,
+        "deliveryAddress": {
+          "street": "Kerkstraat 12",
+          "city": "Ghent",
+          "postalCode": "9000",
+          "countryCode": "BE"
+        }
+      }
+    }
+  ],
+  "payments": [
+    {
+      "paymenttype_code": "Voorschot",
+      "amount": -50.00
+    }
+  ]
+}
+```

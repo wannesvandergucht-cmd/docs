@@ -1,0 +1,121 @@
+{
+  "projectType": "api-service",
+  "projectName": "Tilroy",
+  "projectDescription": "Tilroy is a cloud-based retail platform providing APIs for ERP integration, point-of-sale, inventory management, pricing, and omnichannel order fulfillment.",
+  "theme": "luma",
+  "primaryColor": "#357de8",
+  "lightColor": "#095fd9",
+  "darkColor": null,
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "authentication",
+              "api-concepts"
+            ]
+          },
+          {
+            "group": "Core Concepts",
+            "pages": [
+              "concepts/transactions-sales-orders",
+              "concepts/stock-model",
+              "concepts/pricing-model"
+            ]
+          },
+          {
+            "group": "Integration Guides",
+            "pages": [
+              "guides/erp-integration",
+              "guides/stock-transfers",
+              "guides/home-delivery",
+              "guides/cash-and-financial"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Overview",
+            "pages": [
+              "api-reference/overview"
+            ]
+          },
+          {
+            "group": "Sales & Orders",
+            "pages": [
+              "api-reference/sale-api",
+              "api-reference/order-api",
+              "api-reference/basket-api"
+            ]
+          },
+          {
+            "group": "Inventory",
+            "pages": [
+              "api-reference/stock-api",
+              "api-reference/transfer-api",
+              "api-reference/product-api"
+            ]
+          },
+          {
+            "group": "Pricing & Promotions",
+            "pages": [
+              "api-reference/price-api",
+              "api-reference/promotion-api",
+              "api-reference/voucher-api"
+            ]
+          },
+          {
+            "group": "Customers & Payments",
+            "pages": [
+              "api-reference/customer-api",
+              "api-reference/payment-request-api",
+              "api-reference/authentication-api"
+            ]
+          },
+          {
+            "group": "Shop & Operations",
+            "pages": [
+              "api-reference/shop-api",
+              "api-reference/delivery-api",
+              "api-reference/shipment-api"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Asynchronous import endpoints for pushing ERP data into Tilroy",
+    "Near real-time export endpoints for pulling sales, transfers, and stock movements",
+    "Synchronous APIs for customers, vouchers, and baskets",
+    "Omnichannel order management: home delivery, click and collect, in-store POS",
+    "Multi-level pricing: global, country, and shop-specific price rules",
+    "Stock transfer management between distribution centers and stores",
+    "Petty cash, cash-up, and money transfer tracking",
+    "Promotion and voucher engine with return incentive activations",
+    "Paginated export feeds retained for 14 days"
+  ],
+  "publicApiSurface": [
+    "POST /import/products",
+    "POST /import/prices",
+    "POST /import/transfers",
+    "POST /import/stockcorrections",
+    "GET /export/sales",
+    "GET /export/transfers",
+    "GET /export/moneytransfer",
+    "GET /export/pettycashes",
+    "GET /export/cashups",
+    "GET /export/stockmovements",
+    "Customer API (CRUD)",
+    "Voucher API (create, redeem)",
+    "Basket API (create, update, checkout)",
+    "Authentication API /tokens"
+  ]
+}

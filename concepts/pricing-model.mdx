@@ -1,0 +1,134 @@
+---
+title: "Tilroy Pricing Model: Scopes, Ranges, and Priority"
+sidebarTitle: "Pricing Model"
+description: "Understand Tilroy's pricing model: standard and promo prices, volume pricing, global and shop-specific scopes, and how price priority is resolved."
+---
+
+Tilroy's pricing engine determines the sell price displayed in the POS, webshop, and on printed receipts. Prices are scoped by shop, country, or global applicability, and they support time-based activation, volume thresholds, and promotional overrides. Understanding how the engine resolves competing prices prevents unexpected sell prices reaching your customers.
+
+## Price Types
+
+Every product can have two parallel price types active at the same time.
+
+**Standard price** is the regular sell price. It is the price Tilroy falls back to when no promotion is active, and it serves as the baseline that all promotional prices are compared against.
+
+**Promo price** is a promotional price displayed alongside the standard price — typically as a strikethrough — in the POS, webshop, and on receipts. Tilroy only activates a promo price if it is strictly **lower** than the applicable standard price. If you accidentally import a promo price higher than the standard price, the standard price is used and no strikethrough is shown.
+
+<Tip>
+  Use promo prices to run time-limited promotions. Set a `startDate` and `endDate` on the price record so the POS switches automatically without any manual intervention.
+</Tip>
+
+## Price Ranges
+
+Tilroy supports two price ranges that correspond to your customer types.
+
+| Range | VAT | Typical use case |
+|-------|-----|-----------------|
+| **Retail** | VAT-inclusive | B2C customers purchasing at the counter or online. |
+| **Wholesale** | VAT-exclusive | B2B customers invoiced without VAT. |
+
+A sale's `isVatInclusive` flag determines which range applies for a given transaction. You can maintain separate retail and wholesale prices for the same SKU within the same price record.
+
+**Label type** is an optional field on a price record that controls the promo label template used when printing shelf labels. Set this when you need different label designs for different types of promotions (for example, a "Sale" label vs. a "Bundle" label).
+
+## Volume Pricing
+
+Volume pricing lets you automatically apply a lower unit price when a customer buys above a quantity threshold.
+
+**Volume prices** apply to the standard price. Define a list of quantity breakpoints, each with a unit price:
+
+| Quantity threshold | Unit price |
+|-------------------|------------|
+| 1 | €60.00 |
+| 10 | €50.00 |
+| 50 | €45.00 |
+
+When a cashier adds 12 units to a basket, the POS automatically uses €50.00 per unit.
+
+**Volume discounts** apply the same breakpoint logic to the promo price. Use these when you want strikethrough pricing to also scale with quantity.
+
+## Price Scope
+
+A price record is always scoped to one of three levels. Tilroy uses the scope to determine which price record is eligible for a given POS terminal or webshop channel.
+
+| Scope | Configuration | Applies to |
+|-------|--------------|------------|
+| **ALL** | No shop and no country code set | Every shop and every country |
+| **Country** | `countryCode` is set | All shops in that country |
+| **Shop** | `shop` is set | That specific shop only |
+
+## Price Priority
+
+When multiple price records are eligible for the same SKU, channel, and moment in time, Tilroy applies the following priority rules — in order from highest to lowest:
+
+1. **Shop** — a shop-specific price always wins over a country or ALL price.
+2. **Country** — a country price overrides an ALL price for shops in that country.
+3. **ALL** — the global fallback when no shop or country price is found.
+4. **Start date** — among records at the same scope level, the record with the **later start date** wins.
+5. **Creation date** — if two records at the same scope share the same start date, the **most recently created** record wins.
+
+<Accordion title="Example: Shop price overrides a country discount">
+  Your Belgian webshop (`shop = "WEB-BE"`) has a country-level price of €55.00 for SKU `JACKET-01` (scope: `countryCode = "BE"`). You also import a shop-specific price of €49.00 for the same SKU with `shop = "WEB-BE"`.
+
+  **Result:** The shop price (€49.00) wins because shop scope has higher priority than country scope. All other Belgian shops that do not have a shop-specific price continue to use €55.00.
+</Accordion>
+
+<Accordion title="Example: Later start date overrides an earlier promotion">
+  You have two ALL-scoped promo prices for SKU `SCARF-02`:
+  - Record A: `startDate = 2024-11-01`, price = €19.00 (created first)
+  - Record B: `startDate = 2024-11-15`, price = €15.00 (created second)
+
+  On 1 November, Record A is active (€19.00). On 15 November, Record B becomes active (€15.00) because its start date is later. If both records had `startDate = 2024-11-01`, Record B would win because it was created more recently.
+</Accordion>
+
+## idSource
+
+`idSource` is a unique identifier you assign to a price record from your ERP or pricing system. It is the key to updating an existing price record rather than creating a new one.
+
+- **With `idSource`:** Tilroy looks up the existing record by `idSource` and updates it in place. Only one active record per `idSource` exists at any time.
+- **Without `idSource`:** Tilroy **always creates a new record**, even if you are re-sending the same price data.
+
+<Warning>
+  Omitting `idSource` when re-sending prices creates duplicate price records. Duplicate records with the same scope and start date are resolved by creation date, which means your most recent send wins — but your price history becomes cluttered and harder to audit. Always assign a stable `idSource` from your ERP for every price record you manage.
+</Warning>
+
+## Sending Prices
+
+Import prices using the asynchronous Price API endpoint:
+
+```
+POST /import/prices
+```
+
+Tilroy validates the message on receipt and returns `202 Accepted`. Processing happens asynchronously in a queue.
+
+<Note>
+  Validation is **atomic per message**: if any price record in a message is invalid, the entire message is rejected and no prices in that message are processed.
+</Note>
+
+**Best practice:** send prices for **one product per message**. This limits the blast radius of a validation error — a problem with one product's prices does not block price updates for other products.
+
+```json Single-product price import
+{
+  "prices": [
+    {
+      "idSource": "ERP-PRICE-88210-RETAIL",
+      "idSku": "SKU-88210",
+      "priceType": "standardPrice",
+      "priceRange": "retail",
+      "amount": 59.99,
+      "startDate": "2024-12-01",
+      "endDate": "2024-12-31"
+    },
+    {
+      "idSource": "ERP-PRICE-88210-PROMO",
+      "idSku": "SKU-88210",
+      "priceType": "promoPrice",
+      "priceRange": "retail",
+      "amount": 44.99,
+      "startDate": "2024-12-01",
+      "endDate": "2024-12-31"
+    }
+  ]
+}
+```

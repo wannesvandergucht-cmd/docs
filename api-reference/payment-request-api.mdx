@@ -1,0 +1,17 @@
+---
+title: "Payment Request API: Initiate Payments from Tilroy"
+sidebarTitle: "Payment Request API"
+description: "Use the Payment Request API to initiate and track payment requests in Tilroy, enabling payment flows from custom applications and integrations."
+---
+
+The Payment Request API lets you initiate payment requests from your own application or integration layer and track their status through to completion. Use it to drive payment flows from custom checkout interfaces, kiosk applications, or third-party systems that need to trigger and monitor a payment through Tilroy without operating a full POS session.
+
+A payment request tells Tilroy to present a payment to a connected payment terminal or online payment gateway. Your application sends the request, Tilroy routes it to the appropriate payment handler, and you can poll or listen for the result. This makes the Payment Request API a useful building block for any integration that needs to collect payment independently of the standard Tilroy POS flow.
+
+Common use cases include:
+
+- **Custom self-checkout or kiosk flows** — initiate a card payment on a connected terminal from your own UI
+- **Remote payment initiation** — trigger a payment from a back-office or customer service tool on behalf of a customer
+- **Third-party checkout integrations** — connect an external checkout system to Tilroy's payment infrastructure
+
+For the complete endpoint specification, request and response schemas, supported payment methods, and status codes, see the [Payment Request API reference](https://tilroy-apidocs-prd.s3.eu-west-1.amazonaws.com/paymentrequestapi.html).

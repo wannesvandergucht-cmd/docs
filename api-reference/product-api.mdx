@@ -1,0 +1,61 @@
+---
+title: "Product API: Import Your Product Catalogue into Tilroy"
+sidebarTitle: "Product API"
+description: "Use the Product API to import product catalogue data into Tilroy — including SKUs, descriptions, variants, and attributes — via the async import endpoint."
+---
+
+The Product API lets you push your product catalogue from an external system — such as a PIM or ERP — directly into Tilroy. Use it to create and update products, SKUs, variants, descriptions, and attributes so that your POS, webshop, and back-office always reflect your latest catalogue without manual data entry.
+
+## Import Endpoint
+
+**POST /import/products** — Submit product catalogue data to Tilroy.
+
+Send your product records as a structured payload to this endpoint. Tilroy validates the message on receipt and queues it for asynchronous processing.
+
+```http request.http
+POST /import/products
+x-api-key: <your-profile-key>
+Tilroy-Api-Key: <your-account-key>
+Content-Type: application/json
+```
+
+## How It Works
+
+The Product API uses Tilroy's standard asynchronous import pattern:
+
+<Steps>
+  <Step title="Submit your product payload">
+    POST your product data to `/import/products`. Structure your payload according to the schema defined in the hosted API documentation.
+  </Step>
+  <Step title="Receive 202 OK">
+    Tilroy validates the message structure on receipt. A `202 OK` response confirms the message has been accepted and queued — it does not mean processing is complete.
+  </Step>
+  <Step title="Tilroy processes asynchronously">
+    Tilroy processes the import from the queue. Processing speed depends on the message type and current system load.
+  </Step>
+  <Step title="Monitor for errors">
+    Check the ProcessLog API for the outcome of your import. You are responsible for detecting and handling any validation or processing errors.
+  </Step>
+</Steps>
+
+<Note>
+  A `202 OK` response confirms receipt, not successful processing. Always monitor the ProcessLog API to verify your product imports have been applied correctly.
+</Note>
+
+## What You Can Import
+
+The Product API supports a rich product schema including:
+
+- **Product identifiers** — internal IDs, barcodes, and your own `idSource` references
+- **SKU and variant structure** — model/SKU hierarchy with size, colour, and other variant dimensions
+- **Descriptions and copy** — product names and descriptive text per language
+- **Product attributes** — custom fields and feature values defined in your catalogue
+- **Status and availability flags** — active/inactive, sale eligibility, and webshop visibility settings
+
+<Tip>
+  Refer to the [Product API reference](https://tilroy-apidocs-prd.s3.eu-west-1.amazonaws.com/productapi.html) for the complete field-by-field schema, required vs optional fields, data types, and example payloads. The hosted documentation is the definitive source for all product import fields.
+</Tip>
+
+## Full API Reference
+
+For the complete endpoint specification, request schema, field descriptions, and worked examples, see the [Product API reference](https://tilroy-apidocs-prd.s3.eu-west-1.amazonaws.com/productapi.html).

@@ -1,0 +1,66 @@
+---
+title: "Tilroy API Authentication: Headers, Keys, and Tokens"
+sidebarTitle: "Authentication"
+description: "Learn which two headers every Tilroy API request requires, how to obtain your API keys, and how to add bearer tokens for the Customer API."
+---
+
+Every request to the Tilroy API must carry two identifying headers: one that controls profile and access permissions, and one that identifies which Tilroy account you are targeting. For the Customer API, a third header carrying a bearer token is also required. Get these values from Tilroy before you make your first call — without them, all requests will be rejected.
+
+## Required headers
+
+Include both of the following headers on every API request:
+
+<ParamField header="x-api-key" type="string" required>
+  Your integration profile key. Controls which resources and operations your integration is permitted to access. Provided by Tilroy when your integration is configured.
+</ParamField>
+
+<ParamField header="Tilroy-Api-Key" type="string" required>
+  Your account identifier. Tells Tilroy which tenant (ACC or PROD) the request belongs to. Each environment has its own distinct value.
+</ParamField>
+
+```http request.http
+GET /export/sales HTTP/1.1
+Host: api.tilroy.com
+x-api-key: YOUR_X_API_KEY
+Tilroy-Api-Key: YOUR_TILROY_API_KEY
+```
+
+## Getting your API keys
+
+Contact [integrations@tilroy.com](mailto:integrations@tilroy.com) to request your API keys. Tilroy will configure your integration profile and provide you with both the `x-api-key` and `Tilroy-Api-Key` values for each environment you need access to.
+
+## Acceptance vs production
+
+Tilroy provides two separate environments for every integration:
+
+| Environment | Purpose |
+|---|---|
+| **ACC** (Acceptance) | Integration testing and validation. Safe to use with test data. |
+| **PROD** (Production) | Live retail operations. Use only when your integration is fully verified. |
+
+Each environment has its own `Tilroy-Api-Key`. Your `x-api-key` may differ between environments as well. Treat these values as secrets and never use production credentials in test workflows.
+
+## Customer API bearer tokens
+
+When you call the Customer API, include a third header in addition to `x-api-key` and `Tilroy-Api-Key`:
+
+<ParamField header="Authorization" type="string" required>
+  A bearer token that authorises access to customer data. Format: `Bearer <token>`.
+</ParamField>
+
+Tilroy supports two token strategies depending on your use case:
+
+- **Per-customer token** — Use the Authentication API `/tokens` endpoint to obtain a token scoped to a specific customer. Use this when the call is made in the context of an authenticated customer session (for example, in a webshop).
+- **Service-level token** — A single token that grants access to all customer records. Use this for back-office sync operations where you process customer data in bulk. Contact Tilroy to obtain a service-level token.
+
+```http customer-api-request.http
+GET /customers/12345 HTTP/1.1
+Host: api.tilroy.com
+x-api-key: YOUR_X_API_KEY
+Tilroy-Api-Key: YOUR_TILROY_API_KEY
+Authorization: Bearer YOUR_BEARER_TOKEN
+```
+
+<Warning>
+  If you receive the error **"User xxx has no permission to update customer"**, your bearer token and `Tilroy-Api-Key` are mismatched — they belong to different tenants. Verify that both values are from the same environment (ACC or PROD) and were issued for the same Tilroy account.
+</Warning>

@@ -1,0 +1,142 @@
+---
+title: "Sale API: Export Transactions, Returns, and Invoices"
+sidebarTitle: "Sale API"
+description: "Use the Sale API to export completed sales, returns, dispatch events, and invoices from Tilroy. Covers line types, price fields, payments, and vouchers."
+---
+
+The Sale API's export endpoint lets you pull all completed transactions from Tilroy — including regular sales, returns, orders, dispatch events, invoices, and credit notes. Use it to synchronize financial and operational data with your ERP, accounting system, or data warehouse.
+
+## Endpoint
+
+Poll completed transactions using the export endpoint:
+
+```http
+GET /export/sales
+```
+
+The Sale API is asynchronous and pull-based. Every completed transaction generates a message. Retrieve messages in order by modification timestamp, paginate through them using the `count` parameter, and filter using `dateExportedSince` to fetch only new records. Refer to the [full Sale API documentation](https://tilroy-apidocs-prd.s3.eu-west-1.amazonaws.com/saleapi.html) for complete request/response schemas and field-level detail.
+
+## Sale Header
+
+Each sale record contains top-level header fields identifying the shop, cashier, and customer involved in the transaction.
+
+Key header fields include:
+
+- **shop** — the store where the sale occurred
+- **user** — the cashier or operator who processed the sale
+- **customer** — the associated customer profile, if present
+- **isVatInclusive** — set to `true` for B2C transactions where prices include VAT; set to `false` for B2B transactions where prices are VAT-exclusive
+
+The `isVatInclusive` flag determines how you interpret all price and total fields on the sale and its lines.
+
+## Line Types
+
+Each sale contains one or more lines. The `type` field on each line identifies what that line represents:
+
+| Type | Name | Description |
+|------|------|-------------|
+| `P` | Product | A regular product sale. Counts toward turnover. |
+| `R` | Return | A returned product. Counts toward turnover as a negative amount. |
+| `T` | Text / Order | A committed order line (home delivery or click and collect). No immediate stock or turnover change — turnover is recognized at dispatch or pickup. |
+| `G` | Gift Voucher Sale | The sale of a gift voucher. Recorded as a separate line type for reporting purposes. |
+
+## Price Fields
+
+Each sale line carries a full set of price fields so you can reconcile the transaction at any level of detail:
+
+| Field | Description |
+|---|---|
+| `sellPrice` | The actual unit price the customer paid |
+| `costPrice` | The cost price of the item |
+| `standardPrice` | The standard retail price at the time of the sale |
+| `standardUnitPrice` | The standard price per unit (relevant for volume pricing) |
+| `promoPrice` | The promotional price, if a promotion was active |
+| `manualPrice` | A manually overridden price, if set by the cashier |
+| `standardPriceOrig` | The original standard price before any applicable overrides |
+| `lineTotalCost` | Total cost for the line (cost price × quantity) |
+| `lineTotalStandard` | Total at standard price for the line |
+| `lineTotalSell` | Total amount actually charged for the line |
+| `lineTotalDiscount` | Total discount applied on the line |
+| `lineTotalVatExcl` | Line total excluding VAT |
+| `lineTotalVat` | The VAT amount for the line |
+
+## Payments
+
+The payments segment of a sale lists each payment method used and the amount tendered. Identify each payment method by its `paymenttype_code`.
+
+Gift cards appear in the sale in two ways: as a **line of type `G`** when a gift card is sold, and as a **payment entry** in the payments segment when a gift card is used as a method of payment.
+
+Advances (deposits) work in the opposite direction: when an advance is collected, it appears as a **negative amount** in the payments segment (money coming in); when the advance is redeemed against the final sale, it appears as a **positive amount**.
+
+<Accordion title="Payment Type Codes">
+
+The following payment type codes appear in the `paymenttype_code` field of the payments segment:
+
+| Code | Description |
+|---|---|
+| `Cash` | Cash |
+| `Cadeau` | Gift card |
+| `Tegoed` / `Credit` | Customer credit |
+| `Voorschot` / `Acompte` | Advance / deposit |
+| `Bancontact/MC` | Bancontact / Maestro |
+| `Mastercard` | Mastercard |
+| `VISA` | Visa |
+| `AMEX` | American Express |
+| `Maestro` | Maestro |
+| `Payconiq` | Payconiq |
+| `EFT/CB` | Electronic funds transfer / Carte Bleue |
+| `Edenred Ecocheque` | Edenred Ecocheque |
+| `Edenred Culturepass` | Edenred Culturepass |
+| `Edenred Lunchpass` | Edenred Lunchpass |
+| `Edenred Ecopass` | Edenred Ecopass |
+| `Edenred Cadeaupass` | Edenred Cadeaupass |
+| `Edenred Consumptie` | Edenred Consumptie |
+| `Monizze` | Monizze |
+| `Sodexo` | Sodexo |
+| `NEXT SALE DISCOUNT` | Loyalty discount applied to next sale |
+| `Rounding` | Rounding adjustment |
+| `CBC Online` | CBC online payment |
+| `ING HomePay` | ING HomePay |
+| `KBC Online` | KBC online payment |
+| `PAYPAL` | PayPal |
+| `iDEAL` | iDEAL |
+| `Mastercard web` | Mastercard (online) |
+| `Visa web` | Visa (online) |
+| `Ogone` | Ogone / Ingenico |
+| `Klarna` | Klarna |
+| `Adyen` | Adyen |
+| `Mollie` | Mollie (and Mollie sub-types) |
+| `PAY.NL` | PAY.NL (and PAY.NL variants) |
+| `Kadoz` | Kadoz |
+| `Buyway` | Buyway |
+
+</Accordion>
+
+## Vouchers
+
+The vouchers segment of a sale lists any promotional vouchers or loyalty vouchers that were presented during the transaction. Use the `used` flag to determine whether a voucher actually triggered a promotion — a voucher may be scanned but not result in a discount if its conditions were not met.
+
+The activations segment lists any return-incentive vouchers issued to the customer as part of the transaction (for example, a discount voucher generated when a return is processed).
+
+## Invoices and Credit Notes
+
+Sales of type `I` are invoices. An invoice sale follows the same structure as a regular sale but is flagged for B2B billing purposes.
+
+A sale with a **negative total** is a credit note — for example, when an invoice is reversed or a return produces a net negative amount.
+
+## Filtering and Pagination
+
+The `/export/sales` endpoint supports the following query parameters to control how many records you retrieve and which time window you target:
+
+| Parameter | Description |
+|---|---|
+| `dateExportedSince` | Return only sales exported after this timestamp. Use this to fetch incremental updates. |
+| `count` | Number of records per page. Default is `10`; maximum is `100`. |
+
+<Warning>
+Export messages are retained for **14 days** only. Ensure your integration polls frequently enough to avoid missing records. Build monitoring and alerting into your pipeline to catch any gaps in consumption.
+</Warning>
+
+<Note>
+For the complete JSON request and response schemas, field-level definitions, and worked examples, refer to the [Sale API hosted documentation](https://tilroy-apidocs-prd.s3.eu-west-1.amazonaws.com/saleapi.html).
+</Note>

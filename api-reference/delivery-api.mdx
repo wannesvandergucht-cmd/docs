@@ -1,0 +1,32 @@
+---
+title: "Delivery API: Track and Sync Your Deliveries in Tilroy"
+sidebarTitle: "Delivery API"
+description: "Use the Delivery API to track inbound and outbound deliveries in Tilroy, supporting integration with your logistics and warehouse management systems."
+---
+
+The Delivery API provides access to delivery records in Tilroy, enabling integration with your logistics or warehouse management systems. Use it to synchronize delivery status and data between Tilroy and your external fulfillment or ERP workflows.
+
+## Overview
+
+When goods move between your distribution center, stores, or external carriers, Tilroy maintains delivery records that capture the status and details of each movement. The Delivery API lets you read these records so your logistics or warehouse management system stays aligned with what Tilroy tracks.
+
+Typical use cases include:
+
+<CardGroup cols={2}>
+  <Card title="Inbound Logistics" icon="truck-ramp-box">
+    Track deliveries arriving at your stores or distribution center, and reconcile received goods against purchase orders or transfer requests.
+  </Card>
+  <Card title="ERP Synchronization" icon="arrows-rotate">
+    Export delivery records from Tilroy into your ERP to keep inventory, financials, and order fulfillment data consistent across systems.
+  </Card>
+</CardGroup>
+
+<Note>
+  For delivery note documents — formal records attached to a delivery — use the **DeliveryNote API** alongside this endpoint. Full documentation is available at the [DeliveryNote API Reference](https://tilroy-apidocs-prd.s3.eu-west-1.amazonaws.com/deliverynoteapi.html).
+</Note>
+
+## Full API Reference
+
+For the complete endpoint specifications, request/response schemas, and field-level documentation, refer to the official Delivery API reference:
+
+[Delivery API Reference →](https://tilroy-apidocs-prd.s3.eu-west-1.amazonaws.com/deliveryapi.html)

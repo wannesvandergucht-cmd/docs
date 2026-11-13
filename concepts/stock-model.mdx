@@ -1,0 +1,105 @@
+---
+title: "Stock Model and Inventory Management in Tilroy POS"
+sidebarTitle: "Stock Model"
+description: "Learn how Tilroy tracks inventory: available stock, reserved stock, transfer statuses, and stock movement types for accurate multichannel inventory."
+---
+
+Tilroy maintains a real-time inventory ledger across all your stores and distribution centers. Every stock change — whether caused by a sale, a transfer, a correction, or a customer order — is recorded as a stock movement and made available for export. Understanding how Tilroy models stock helps you build integrations that stay in sync and handle edge cases such as partial shipments and quantity discrepancies.
+
+## Stock Levels
+
+Tilroy tracks two stock quantities per SKU per location:
+
+- **Available stock** — the quantity physically present and available for sale.
+- **Reserved stock** — the quantity held for pending customer orders (click and collect or home delivery). Reserved stock is not available for other sales.
+
+Stock for your Distribution Center (DC) is imported into Tilroy via the **Stock API**. Store-level stock is maintained automatically as sales, returns, and transfers are processed.
+
+<Note>
+  When a customer places an order, Tilroy immediately increases the reserved stock at the fulfilling location. Available stock is reduced at the point of dispatch, not at the point of order.
+</Note>
+
+## Transfer Statuses
+
+Transfers move stock between locations. Every transfer record carries a status that reflects where in the fulfillment lifecycle it sits.
+
+| Status | Name | Description |
+|--------|------|-------------|
+| `Q` | Queued / Request | A transfer has been requested but not yet dispatched. Stock remains at the source location. |
+| `T` | In Transfer | Goods are in transit. Stock has been deducted from the source but not yet booked to the destination. |
+| Received | Received | Goods have been received and booked to the destination location. Stock is now available at the destination. |
+
+## Transfer Flags
+
+When you import a transfer via `POST /import/transfers`, a set of boolean flags controls how Tilroy processes it. Combine these flags to model your specific fulfillment flow.
+
+| Flag | Type | Description |
+|------|------|-------------|
+| `isRequest` | boolean | Marks this transfer as a **request** rather than a dispatch. Used by stores to request stock from the DC. Status is set to `Q`. |
+| `doReceipt` | boolean | Automatically books the goods as **received** at the destination without requiring a separate manual confirmation step. |
+| `doCloseRequest` | boolean | Closes an open transfer request. Use this when a request is partially fulfilled or cannot be fulfilled at all. |
+| `doCheckOffOpenRequests` | boolean | Instructs Tilroy to automatically match this transfer against any open requests (`Q` status) at the destination. |
+| `doDispatch` | boolean | Automatically dispatches a pending home delivery order when the transfer is received at the fulfilling location. |
+
+## Stock Movement Types
+
+Every change to stock generates a stock movement record. You can export all movements via the Stock API export endpoint. Each movement has a `type` field with one of the following values:
+
+| Type | Description |
+|------|-------------|
+| `Correction` | A manual stock correction made by a store manager or administrator. |
+| `Initialisation` | Stock is set to a specific absolute quantity via an init message. Overwrites the current stock level. |
+| `Receipt` | Goods received at a location — typically from a DC transfer or purchase order. |
+| `Reservation` | A change in reserved stock caused by a customer order being placed, modified, or cancelled. |
+| `Sale` | A stock reduction (or addition for returns) caused by a completed sale at the POS. |
+| `Transfer` | Stock movement between two locations as part of a transfer record. |
+
+<Note>
+  Stock movements are available for export via `GET /export/stockmovements` on the Stock API. Use the `dateExportedSince` filter to pull only movements that have changed since your last sync. Messages are retained for 14 days.
+</Note>
+
+## Transfer Flows
+
+Tilroy supports four standard transfer flows. Each flow uses a different combination of import calls and flags.
+
+<Accordion title="Push delivery — DC to store">
+  The DC proactively sends stock to a store.
+
+  1. DC imports a transfer via `POST /import/transfers` with `status = T` and `doReceipt = false`.
+  2. The store receives a transfer event via `GET /export/transfers`.
+  3. The store confirms receipt. Tilroy books the stock to the store.
+  4. If there is a quantity discrepancy (see below), Tilroy creates a reverse transfer for the delta.
+</Accordion>
+
+<Accordion title="Pull / store order — store requests from DC">
+  A store requests stock from the DC.
+
+  1. The store creates a transfer request via `POST /import/transfers` with `isRequest = true` and `status = Q`.
+  2. The DC picks the request and imports a transfer referencing the store's `tilroyId`.
+  3. The store receives the transfer and confirms receipt. Tilroy closes the request.
+</Accordion>
+
+<Accordion title="Store-to-store transfer">
+  One store sends stock to another store. This uses the same pull flow as the DC-to-store scenario, with the sending store acting as the source.
+</Accordion>
+
+<Accordion title="Return to DC — store sends stock back">
+  A store returns stock to the DC.
+
+  1. The store imports a transfer via `POST /import/transfers` with `status = T`.
+  2. The DC receives a transfer event via `GET /export/transfers`.
+  3. The DC confirms receipt via `POST /import/transfers`. Tilroy books the returned stock.
+</Accordion>
+
+## Difference Handling
+
+When the quantity received at a destination differs from the quantity that was dispatched, Tilroy automatically reconciles the discrepancy.
+
+- `quantityTransferred` — the quantity originally sent from the source.
+- `quantityReceived` — the quantity actually booked at the destination.
+
+If `quantityReceived` is less than `quantityTransferred`, Tilroy creates a **reverse transfer** for the delta and books it back to the source location. The reverse transfer includes a `basedOn` segment that references the original transfer, so you can trace the discrepancy in your ERP.
+
+<Warning>
+  Always provide both `quantityTransferred` and `quantityReceived` when confirming receipt. If you omit `quantityReceived`, Tilroy assumes full receipt and no reverse transfer is created — even if goods were missing.
+</Warning>

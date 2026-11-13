@@ -1,0 +1,149 @@
+---
+title: "Omnichannel Orders: Home Delivery and Click and Collect"
+sidebarTitle: "Home Delivery"
+description: "Process home delivery and click and collect orders through Tilroy — from order placement and advance payments to dispatch, pickup, and partial shipments."
+---
+
+Tilroy supports two omnichannel order types — Home Delivery (HD) and Click and Collect (CC). Both are registered in sales and involve transfer flows to move goods from their source location to the customer. Unlike a regular sale where goods change hands immediately, order lines do not change stock or turnover at the moment of placement — they become turnover only when goods are dispatched or picked up.
+
+## Order Types
+
+<CardGroup cols={2}>
+  <Card title="Home Delivery (HD)" icon="truck">
+    Goods are shipped from the DC or webshop location to the customer's address. The order is placed online or in-store and fulfilled by your logistics operation. Tilroy automatically creates a transfer request when the order is placed.
+  </Card>
+  <Card title="Click and Collect (CC)" icon="store">
+    Goods are reserved for the customer and held at a specific store. The customer places the order online or in-store and collects in person. No outbound transfer is needed — stock is reserved at the pickup location.
+  </Card>
+</CardGroup>
+
+Both order types can be placed through the online webshop or directly at the POS. The resulting sale structure is identical — the `collectMethod` field on each line tells you which fulfilment type applies.
+
+## Home Delivery Flow
+
+<Steps>
+  <Step title="Customer places the order">
+    An initial sale is created in Tilroy. Order lines appear with `type: T` (text lines) — these do not yet affect stock or turnover. Each line carries `collectMethod.isHomeDelivery: true` and an `order` segment with the price, quantity, SKU, and order line identifiers.
+
+    ```json initial-sale-hd.json
+    {
+      "isOrder": true,
+      "lines": [
+        {
+          "type": "T",
+          "collectMethod": {
+            "isHomeDelivery": true
+          },
+          "order": {
+            "idSku": "SKU-001",
+            "quantity": 2,
+            "sellPrice": 49.95,
+            "orderLineId": "OL-001"
+          }
+        }
+      ]
+    }
+    ```
+  </Step>
+  <Step title="Advance payment is recorded (optional)">
+    If the customer pays a deposit at order time, Tilroy records an advance payment in the sale's payments segment. The advance uses `paymentType.code: "Voorschot"` with a **negative** amount (the money has been received, reducing the outstanding balance). The actual means of payment — such as Bancontact or iDEAL — appears as a separate positive entry in the same payments block.
+  </Step>
+  <Step title="Tilroy creates a transfer request">
+    Tilroy automatically generates a transfer request from the DC to the webshop location. This appears on `GET /export/transfers` with `isRequest: true`. Your DC system picks up this request and begins fulfilment.
+  </Step>
+  <Step title="DC sends the transfer">
+    Your DC sends a transfer via `POST /import/transfers`, referencing the request's `tilroyId`. Set `doReceipt: true` to auto-receive the goods at the webshop without manual confirmation.
+  </Step>
+  <Step title="Order is dispatched">
+    Once the transfer is received, a dispatch sale is created in Tilroy with `isDispatch: true`. The dispatch sale lines are type P — these count as turnover. Each line's `idTillBasketLineOrig` references the original order line from the initial sale. Set `doDispatch: true` on the transfer to trigger dispatch automatically on receipt.
+
+    ```json dispatch-sale.json
+    {
+      "isDispatch": true,
+      "lines": [
+        {
+          "type": "P",
+          "idTillBasketLineOrig": "original-order-line-id",
+          "order": {
+            "idSku": "SKU-001",
+            "quantity": 2,
+            "orderLineId": "OL-001"
+          }
+        }
+      ]
+    }
+    ```
+  </Step>
+  <Step title="Customer receives the goods">
+    The dispatch sale closes the financial loop for those items. Any remaining advance balance is settled or refunded at this point.
+  </Step>
+</Steps>
+
+## Partial Shipments
+
+Tilroy fully supports splitting a single Home Delivery order across multiple shipments. Each partial fulfilment produces its own transfer and its own dispatch sale.
+
+- Send a transfer for the items you are shipping. Reference the original request's `tilroyId`.
+- Tilroy creates a dispatch sale covering only the lines in that transfer.
+- Repeat for each subsequent shipment.
+- When no more goods will be shipped — even if the order is not fully fulfilled — set `doCloseRequest: true` on the final transfer. This closes the open transfer request and prevents it from remaining pending indefinitely.
+
+<Warning>
+  If you do not close an open transfer request with `doCloseRequest: true`, it will remain active in Tilroy. Always close requests explicitly when fulfilment is complete or cancelled.
+</Warning>
+
+## Click and Collect Flow
+
+<Steps>
+  <Step title="Customer places the order">
+    An initial sale is created with type T lines and `collectMethod.isClickAndCollect: true`. As with HD orders, these lines do not affect stock or turnover at placement. The stock is reserved at the specified pickup store.
+  </Step>
+  <Step title="Advance payment is recorded (optional)">
+    An advance payment can be taken at placement using the same `paymentType.code: "Voorschot"` structure as Home Delivery. The negative advance amount and the positive payment method entry both appear in the sale's payments segment.
+  </Step>
+  <Step title="Customer arrives at the store">
+    A pickup sale is created in Tilroy when the customer collects their goods. The pickup sale contains type P lines — these count as turnover. The `idTillBasketLineOrig` field links each pickup line back to the original order line.
+  </Step>
+  <Step title="Over-the-counter items can be added">
+    The pickup transaction is a full POS sale. The store associate can add regular over-the-counter products (type P) or even place new orders in the same basket. All lines are settled in a single payment.
+  </Step>
+</Steps>
+
+## Identifying Order Sales
+
+When processing sales exports, use these fields to distinguish between regular sales and order-related sales:
+
+| Field | Value | Meaning |
+|-------|-------|---------|
+| `isOrder` | `true` | Initial order sale — lines are type T, no turnover yet |
+| `isDispatch` | `true` | Dispatch sale — lines are type P, turnover is recorded |
+| `lines[].type` | `T` | Order line (no immediate stock/turnover change) |
+| `lines[].type` | `P` | Regular product line (turnover) |
+| `lines[].collectMethod.isHomeDelivery` | `true` | Line belongs to a Home Delivery order |
+| `lines[].collectMethod.isClickAndCollect` | `true` | Line belongs to a Click and Collect order |
+| `lines[].idTillBasketLineOrig` | (line ID) | Dispatch/pickup line — references the original order line |
+
+The `lines.order` segment on order lines contains the authoritative price and quantity for that order line:
+
+<Accordion title="Order segment fields">
+  | Field | Description |
+  |-------|-------------|
+  | `idSku` | The SKU being ordered |
+  | `idSourceSku` | Your ERP's SKU identifier |
+  | `quantity` | Quantity ordered |
+  | `sellPrice` | Agreed sell price at time of order |
+  | `orderLineId` | Unique identifier for this order line |
+</Accordion>
+
+## Invoice and Credit Notes
+
+Tilroy uses sale type `I` for invoices. A credit note is simply a type I sale with a negative total — no separate document type is needed.
+
+Exchanges — where a customer returns items and takes new items in the same transaction — appear as a single invoice containing both:
+
+- Type **R** lines for the returned goods (negative turnover)
+- Type **P** lines for the new goods (positive turnover)
+
+<Info>
+  The net total of an exchange invoice can be positive (customer pays the difference) or negative (customer receives a refund), depending on the value of goods exchanged.
+</Info>

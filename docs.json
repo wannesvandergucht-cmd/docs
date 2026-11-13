@@ -1,0 +1,95 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "name": "Tilroy",
+  "theme": "luma",
+  "favicon": "/favicon.png",
+  "colors": {
+    "primary": "#357de8",
+    "light": "#095fd9"
+  },
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "authentication",
+              "api-concepts"
+            ]
+          },
+          {
+            "group": "Core Concepts",
+            "pages": [
+              "concepts/transactions-sales-orders",
+              "concepts/stock-model",
+              "concepts/pricing-model"
+            ]
+          },
+          {
+            "group": "Integration Guides",
+            "pages": [
+              "guides/erp-integration",
+              "guides/stock-transfers",
+              "guides/home-delivery",
+              "guides/cash-and-financial"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Overview",
+            "pages": [
+              "api-reference/overview"
+            ]
+          },
+          {
+            "group": "Sales & Orders",
+            "pages": [
+              "api-reference/sale-api",
+              "api-reference/order-api",
+              "api-reference/basket-api"
+            ]
+          },
+          {
+            "group": "Inventory",
+            "pages": [
+              "api-reference/stock-api",
+              "api-reference/transfer-api",
+              "api-reference/product-api"
+            ]
+          },
+          {
+            "group": "Pricing & Promotions",
+            "pages": [
+              "api-reference/price-api",
+              "api-reference/promotion-api",
+              "api-reference/voucher-api"
+            ]
+          },
+          {
+            "group": "Customers & Payments",
+            "pages": [
+              "api-reference/customer-api",
+              "api-reference/payment-request-api",
+              "api-reference/authentication-api"
+            ]
+          },
+          {
+            "group": "Shop & Operations",
+            "pages": [
+              "api-reference/shop-api",
+              "api-reference/delivery-api",
+              "api-reference/shipment-api"
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

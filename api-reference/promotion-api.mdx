@@ -1,0 +1,19 @@
+---
+title: "Promotion API: Manage Discounts and Promotion Rules"
+sidebarTitle: "Promotion API"
+description: "Use the Promotion API to configure discount rules and promotions in Tilroy for use across your POS, webshop, and omnichannel order flows."
+---
+
+The Promotion API lets you define and manage the discount rules and promotional configurations that Tilroy's promotion engine evaluates against baskets and sales. Promotions can apply across all your channels — POS, webshop, and omnichannel order flows — giving you a single place to control discounting logic.
+
+When a customer reaches the checkout, Tilroy's promotion engine evaluates all active promotions against the basket and applies any that match the configured rules. The result is visible in the sale export under the `vouchers` segment, where the `used` flag indicates whether a promotion was actually triggered during that transaction.
+
+Promotions in Tilroy can cover a wide range of discount types — percentage discounts, fixed-amount reductions, buy-X-get-Y offers, loyalty rewards, and voucher-based promotions. The full range of configurable options and the promotion rule schema are documented in the hosted API reference.
+
+<Note>
+  The complete endpoint reference — including all promotion types, rule configuration options, request schemas, and example payloads — is available in the [Promotion API reference](https://tilroy-apidocs-prd.s3.eu-west-1.amazonaws.com/promotionapi.html). Consult that documentation for the definitive field-level specification before building your promotion integration.
+</Note>
+
+## Full API Reference
+
+For the complete endpoint specification, promotion types, rule options, and worked examples, see the [Promotion API reference](https://tilroy-apidocs-prd.s3.eu-west-1.amazonaws.com/promotionapi.html).

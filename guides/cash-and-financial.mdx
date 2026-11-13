@@ -1,0 +1,122 @@
+---
+title: "Cash Management and Financial Exports from Tilroy API"
+sidebarTitle: "Cash & Financial"
+description: "Export money transfers, petty cash, and cash-up data from Tilroy to reconcile register positions, daily counts, and small cash movements in your ERP."
+---
+
+Tilroy tracks all cash movements, register counts, and small cash transactions at the register level. Export these records via the Shop API to reconcile your financial records, account for end-of-day cash positions, and post petty cash entries to your ledger. All three endpoints share the same incremental pull pattern — filter by `dateExportedSince` and paginate with `count`.
+
+## Money Transfers
+
+**Endpoint:** `GET /export/moneytransfer`
+
+A money transfer represents a movement of cash between two locations, or a change in a single location's cash position. Interpret the `from` and `to` fields to determine the type of event:
+
+| `from` | `to` | Meaning |
+|--------|------|---------|
+| Set | Set | Movement between two cash locations (e.g., register → safe) |
+| Set | Not set | Cash leaves a location (e.g., cash counted out, discrepancy shortfall) |
+| Not set | Set | Cash arrives at a location (e.g., opening float added, discrepancy surplus) |
+
+Use money transfers as your primary reconciliation feed. Every cash event in Tilroy — including cash-ups and petty cash — ultimately generates one or more money transfer records, so you can build a complete cash audit trail from this single endpoint.
+
+<Tip>
+  If you only need a high-level cash reconciliation without the detail of individual petty cash or cash-up events, the money transfer feed alone is sufficient for most ERP postings.
+</Tip>
+
+## Petty Cash
+
+**Endpoint:** `GET /export/pettycashes`
+
+Petty cash records capture small, ad-hoc cash payments or receipts made directly from a register — for example, buying supplies, paying a parking fee, or receiving a small cash donation. Each petty cash entry includes the amount, direction (payment or receipt), and a description entered by the store associate.
+
+Every petty cash event also generates a corresponding money transfer. You have two options:
+
+- **Track petty cash separately:** Pull `GET /export/pettycashes` for detailed coding (description, category) and post them as individual ledger entries.
+- **Track via money transfers only:** Ignore the petty cash endpoint and let the money transfer feed absorb petty cash movements alongside other cash events.
+
+<Info>
+  Avoid double-counting: if you pull both `GET /export/pettycashes` and `GET /export/moneytransfer`, reconcile the two feeds so that petty cash amounts are not posted twice.
+</Info>
+
+## Cash-Ups
+
+**Endpoint:** `GET /export/cashups`
+
+A cash-up is a physical count of the register performed at the start or end of the trading day. The store associate counts the cash in the drawer; Tilroy compares the count to the expected balance based on all transactions.
+
+Each cash-up record contains:
+
+- The register and shop it belongs to
+- The timestamp of the count
+- The counted amount and the expected amount
+- Any discrepancy (over or short)
+
+Discrepancies automatically generate money transfer records — a surplus creates an incoming money transfer; a shortfall creates an outgoing one. This keeps your cash position accurate in Tilroy without manual adjustment.
+
+<Accordion title="Using both cash-ups and money transfers">
+  If you pull both endpoints, use the cash-up records for detailed daily reconciliation reports (counted vs. expected, per register) and use the money transfer records to drive your actual ledger postings. The discrepancy amount will appear in both — reconcile on the cash-up reference to avoid duplicate postings.
+</Accordion>
+
+## Payment Type Reference
+
+The following payment type codes appear in sale and cash-up records. Use these codes to map Tilroy payment types to your ERP's payment accounts.
+
+| Code | Description |
+|------|-------------|
+| `Cash` | Cash payment |
+| `Cadeau` | Gift card |
+| `Tegoed` / `Credit` | Customer credit (store credit) |
+| `Voorschot` / `Acompte` | Advance / deposit payment |
+| `Bancontact/MC` | Bancontact / Maestro card |
+| `Mastercard` | Mastercard (in-store) |
+| `VISA` | Visa (in-store) |
+| `AMEX` | American Express |
+| `Maestro` | Maestro |
+| `Payconiq` | Payconiq mobile payment |
+| `EFT/CB` | Electronic funds transfer / Carte Bleue |
+| `Edenred Ecocheque` | Edenred eco voucher |
+| `Edenred Culturepass` | Edenred culture voucher |
+| `Edenred Lunchpass` | Edenred lunch voucher |
+| `Edenred Ecopass` | Edenred eco pass |
+| `Edenred Cadeaupass` | Edenred gift pass |
+| `Monizze` | Monizze meal/eco voucher |
+| `Sodexo Consumptie` | Sodexo consumption voucher |
+| `NEXT SALE DISCOUNT` | Loyalty discount applied at next sale |
+| `Rounding` | Cent rounding adjustment |
+| `iDEAL` | iDEAL online payment (Netherlands) |
+| `KBC Online` | KBC online banking |
+| `CBC Online` | CBC online banking |
+| `ING HomePay` | ING HomePay online banking |
+| `PAYPAL` | PayPal |
+| `Klarna` | Klarna buy-now-pay-later |
+| `Adyen` | Adyen payment gateway |
+| `Mollie` | Mollie payment gateway (and sub-types) |
+| `PAY.NL` | PAY.NL payment gateway (and sub-types) |
+| `Mastercard web` | Mastercard (online) |
+| `Visa web` | Visa (online) |
+| `Ogone` | Ogone / Worldline payment gateway |
+| `Kadoz` | Kadoz gift card |
+| `Buyway` | Buyway instalment payment |
+
+<Note>
+  The payment types active on your account depend on your payment provider configuration and the modules enabled for your Tilroy environment. Contact your Tilroy account manager to confirm which payment type codes are in use for your integration.
+</Note>
+
+## Filtering Tips
+
+All three Shop API export endpoints support the same query parameters for efficient incremental pulls:
+
+- **`dateExportedSince`** — Pass an ISO 8601 timestamp to retrieve only records created or modified after your last successful sync. Store this cursor persistently and advance it only after you have successfully processed and committed a batch.
+- **`count`** — Sets the page size. Default is 10; maximum is 100. Increase this to reduce the number of requests needed for high-volume registers.
+- **14-day retention** — Messages are available for 14 days from generation. Pull at least daily to ensure you never miss records.
+
+```http incremental-pull.http
+GET /export/cashups?dateExportedSince=2024-06-10T00:00:00Z&count=100
+x-api-key: <your-profile-key>
+Tilroy-Api-Key: <your-account-key>
+```
+
+<Warning>
+  If your integration is offline for more than 14 days, records generated during that period will no longer be available via the export endpoints. Set up monitoring and alerting to detect stalled export jobs before the retention window expires.
+</Warning>

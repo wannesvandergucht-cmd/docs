@@ -1,0 +1,80 @@
+---
+title: "Customer API: Read and Update Customer Profiles in Tilroy"
+sidebarTitle: "Customer API"
+description: "Retrieve and update customer profiles via the Tilroy Customer API. Requires a bearer token for per-customer access or a service token for full sync."
+---
+
+The Customer API lets you read and update customer profiles stored in Tilroy in real time. Use it to keep your webshop account records, loyalty platform, or CRM in sync with Tilroy's customer data — or to let customers update their own information directly from your app or storefront.
+
+## Authentication for the Customer API
+
+The Customer API requires three headers on every request:
+
+```http request.http
+GET /customers/{id}
+x-api-key: <your-profile-key>
+Tilroy-Api-Key: <your-account-key>
+Authorization: Bearer <token>
+```
+
+| Header | Description |
+|---|---|
+| `x-api-key` | Your profile key — controls API access and permissions. |
+| `Tilroy-Api-Key` | Your account identifier. Use your ACC key for acceptance testing and your PROD key for production. |
+| `Authorization: Bearer <token>` | A bearer token scoped to the customer (or a service-level token for full sync). |
+
+## Bearer Tokens
+
+Tilroy supports two bearer token strategies depending on your use case:
+
+<Tabs>
+  <Tab title="Per-Customer Token">
+    Use this approach when your application acts on behalf of a specific logged-in customer — for example, letting a customer view or edit their own profile in your webshop.
+
+    <Steps>
+      <Step title="Call the Authentication API">
+        POST to `/tokens` on the Authentication API, providing the customer's credentials. See the [Authentication API](/api-reference/authentication-api) page for details.
+      </Step>
+      <Step title="Receive a bearer token">
+        The Authentication API returns a token scoped to that specific customer.
+      </Step>
+      <Step title="Pass the token on Customer API requests">
+        Include the token as `Authorization: Bearer <token>` on every Customer API call for that customer.
+      </Step>
+    </Steps>
+  </Tab>
+  <Tab title="Service-Level Token">
+    Use this approach for background integrations that need to read or update **all** customer records — for example, a nightly sync between Tilroy and your CRM or loyalty platform.
+
+    Contact [integrations@tilroy.com](mailto:integrations@tilroy.com) to request a service-level token. This token is not customer-scoped and can be used across all customer records in your account.
+  </Tab>
+</Tabs>
+
+<Warning>
+  If you receive the error **"User xxx has no permission to update customer"**, the bearer token and `Tilroy-Api-Key` belong to different tenants. Ensure that both values come from the same Tilroy account (ACC or PROD). Mixing keys from different accounts will always result in this error.
+</Warning>
+
+## Use Cases
+
+<CardGroup cols={2}>
+  <Card title="Webshop Account Sync" icon="globe">
+    Keep customer profile data — name, address, contact details, preferences — in sync between your webshop platform and Tilroy in real time.
+  </Card>
+  <Card title="Loyalty Program Integration" icon="star">
+    Read and update loyalty programme attributes, point balances, and tier information stored against the customer profile in Tilroy.
+  </Card>
+  <Card title="Customer Data Retrieval" icon="magnifying-glass">
+    Look up a customer record by ID or identifier to display their profile, order history context, or stored preferences in a custom application.
+  </Card>
+  <Card title="Profile Self-Service" icon="user">
+    Let customers update their own data — address, communication preferences, opt-ins — from your app using a per-customer bearer token.
+  </Card>
+</CardGroup>
+
+## Synchronous API
+
+The Customer API is **synchronous** — every request is handled in real time and returns an immediate response. There is no queue or async processing. This makes it suitable for live customer-facing flows where latency matters.
+
+## Full API Reference
+
+For the complete endpoint specification, all supported fields, and worked examples, see the [Customer API reference](https://tilroy-apidocs-prd.s3.eu-west-1.amazonaws.com/customerapi.html).

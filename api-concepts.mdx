@@ -1,0 +1,103 @@
+---
+title: "Tilroy API Patterns: Import, Export, and Synchronous APIs"
+sidebarTitle: "API Concepts"
+description: "Understand Tilroy's three API patterns: async import, paginated export feed, and synchronous real-time APIs — and when to use each one."
+---
+
+Tilroy organises its API surface into three distinct patterns, each designed for a different integration scenario. Import endpoints let you push data into Tilroy asynchronously. Export endpoints let you pull a timestamped feed of changes out of Tilroy. Synchronous APIs give you direct, real-time read and write access to individual resources. Knowing which pattern to reach for — and how each one behaves under the hood — will save you significant debugging time as your integration grows.
+
+## Import endpoints
+
+Import endpoints handle data flowing **into** Tilroy — products, prices, stock corrections, transfers, and more. All import endpoints follow the path pattern `/import/*`.
+
+When you POST a valid payload to an import endpoint, Tilroy validates the request on receipt and immediately returns `202 Accepted`. This does **not** mean the data has been processed — it means the message has been accepted into the processing queue. Actual processing is asynchronous, and speed depends on the message type and current queue load.
+
+You are responsible for:
+- Handling any validation errors returned before the `202` (fix the payload and retry)
+- Setting up monitoring to detect processing failures after acceptance
+- Ensuring idempotency where required (use `idSource` fields to correlate records)
+
+```http import-request.http
+POST /import/prices HTTP/1.1
+Host: api.tilroy.com
+x-api-key: YOUR_X_API_KEY
+Tilroy-Api-Key: YOUR_TILROY_API_KEY
+Content-Type: application/json
+
+{
+  "prices": [ ... ]
+}
+```
+
+```json import-response.json
+HTTP/1.1 202 Accepted
+```
+
+<Info>
+  A `202 Accepted` response confirms Tilroy received and queued the message. It does not confirm the data was written to your account. Monitor your integration and the ProcessLog API to detect downstream processing errors.
+</Info>
+
+## Export endpoints
+
+Export endpoints handle data flowing **out** of Tilroy — sales, stock movements, transfers, cash-ups, and more. All export endpoints follow the path pattern `/export/*`.
+
+Every change in Tilroy that is relevant to your integration generates a message on the corresponding export feed. You pull these messages at your own pace. Responses are paginated, with a default page size of 10 records. Use the `count` parameter to request up to 100 records per page.
+
+Use the `dateExportedSince` filter to fetch only messages that have appeared since your last poll. This lets you build an incremental sync loop without re-processing records you have already consumed.
+
+```http export-request.http
+GET /export/sales?dateExportedSince=2024-06-01T00:00:00Z&count=100 HTTP/1.1
+Host: api.tilroy.com
+x-api-key: YOUR_X_API_KEY
+Tilroy-Api-Key: YOUR_TILROY_API_KEY
+```
+
+<Note>
+  Export messages are retained for **14 days**. If your integration falls behind or goes offline, you have a 14-day window to catch up before messages are no longer available. Design your polling interval and alerting accordingly.
+</Note>
+
+<Tip>
+  Pull export messages into a local buffer or queue before processing them. This decouples retrieval from processing — if your downstream system is slow or temporarily unavailable, you won't lose messages or fall behind on the export feed.
+</Tip>
+
+## Synchronous APIs
+
+Synchronous APIs provide direct, real-time read and write access to individual Tilroy resources. Unlike import and export endpoints, these calls are not queued — they execute immediately and return the result in the same HTTP response.
+
+Use synchronous APIs when your integration requires low latency or needs to react to a live event:
+
+| API | Typical use |
+|---|---|
+| **Customer API** | Look up, create, or update a customer profile during checkout or account registration |
+| **Voucher API** | Validate a voucher code or check a balance at the point of sale |
+| **Basket API** | Read or manipulate an active shopping basket in real time |
+
+```http sync-request.http
+GET /customers?email=jane.doe@example.com HTTP/1.1
+Host: api.tilroy.com
+x-api-key: YOUR_X_API_KEY
+Tilroy-Api-Key: YOUR_TILROY_API_KEY
+Authorization: Bearer YOUR_BEARER_TOKEN
+```
+
+<Info>
+  Synchronous APIs that operate on customer data also require an `Authorization: Bearer <token>` header. See the [Authentication](/authentication) page for details on obtaining bearer tokens.
+</Info>
+
+## Error handling summary
+
+<Accordion title="Import validation errors (before 202)">
+  If Tilroy returns an error response instead of `202 Accepted`, the payload failed validation. Inspect the error message, correct the payload, and resubmit. Do not retry the original payload — it will fail again for the same reason.
+</Accordion>
+
+<Accordion title="Import processing errors (after 202)">
+  Once Tilroy returns `202 Accepted`, processing errors will not surface in the HTTP response. Use the ProcessLog API to monitor for failures and set up alerting for your integration pipeline.
+</Accordion>
+
+<Accordion title="Export gaps and missed messages">
+  If your integration stops polling the export feed, messages older than 14 days will no longer be available. Use `dateExportedSince` consistently and ensure your buffer strategy accounts for potential downtime.
+</Accordion>
+
+<Accordion title="Synchronous API errors">
+  Synchronous API errors are returned directly in the HTTP response. Handle non-2xx responses explicitly — for example, a `409 Conflict` on a customer update or a `404 Not Found` on a voucher lookup should each trigger specific retry or fallback logic in your integration.
+</Accordion>

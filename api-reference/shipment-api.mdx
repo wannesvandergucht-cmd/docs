@@ -1,0 +1,32 @@
+---
+title: "Shipment API: Manage Outbound Home Delivery Shipments"
+sidebarTitle: "Shipment API"
+description: "Create and manage outbound shipment records in Tilroy for home delivery orders, so your warehouse can confirm dispatch and update order fulfillment status."
+---
+
+The Shipment API lets you manage outbound shipment records in Tilroy, supporting home delivery workflows where your warehouse needs to confirm dispatch and track shipping status. When a home delivery order is ready to leave your warehouse, use this API to record the shipment and keep Tilroy's order state up to date.
+
+## Use Case: Home Delivery Orders
+
+Home delivery (HD) orders in Tilroy represent a commitment to deliver goods to a customer's address. Once your warehouse picks, packs, and ships the goods, you need to record that dispatch back in Tilroy so the order lifecycle reflects the actual fulfillment state.
+
+The Shipment API is the mechanism for doing exactly that — creating and managing the shipment records that mark HD order lines as dispatched and communicate shipping details back to Tilroy.
+
+<CardGroup cols={2}>
+  <Card title="Confirm Dispatch" icon="box-open">
+    Create a shipment record in Tilroy once your warehouse hands goods to the carrier, closing the loop on the HD order.
+  </Card>
+  <Card title="Track Shipping Status" icon="magnifying-glass-location">
+    Manage and update shipment records to reflect carrier status, tracking numbers, and delivery confirmations.
+  </Card>
+</CardGroup>
+
+<Tip>
+  Home delivery dispatch involves more than just the Shipment API. For a complete picture of the HD order fulfillment flow, also review the **Transfer API** (particularly the `doDispatch` flag for automatic dispatch handling) and the **Order API** for order lifecycle management. The three APIs work together to support end-to-end home delivery fulfillment.
+</Tip>
+
+## Full API Reference
+
+For the complete endpoint specifications, request/response schemas, and field-level documentation, refer to the official Shipment API reference:
+
+[Shipment API Reference →](https://tilroy-apidocs-prd.s3.eu-west-1.amazonaws.com/shipmentapi.html)

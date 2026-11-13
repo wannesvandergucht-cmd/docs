@@ -1,0 +1,43 @@
+---
+title: "Introduction to Tilroy APIs and Platform Integrations"
+sidebarTitle: "Introduction"
+description: "Tilroy is a cloud-based retail platform. Use its APIs to sync products, export sales, and interact with customers and baskets across ERP, webshop, and POS."
+---
+
+Tilroy is a cloud-based retail platform that acts as the central hub for your commerce operations. Its APIs let you sync products, prices, and stock from your ERP into Tilroy, export completed sales, transfers, and stock movements back to your back office, and interact in real time with customers, vouchers, and shopping baskets. Whether you are connecting an ERP system, building a webshop integration, or extending Tilroy's point-of-sale behavior, these APIs give you the building blocks you need.
+
+## What you can do
+
+<CardGroup cols={2}>
+  <Card title="Import data" icon="upload">
+    Push products, prices, and stock corrections from your ERP into Tilroy using asynchronous import endpoints.
+  </Card>
+  <Card title="Export data" icon="download">
+    Pull completed sales, stock transfers, and stock movements from Tilroy into your ERP or data warehouse using paginated export feeds.
+  </Card>
+  <Card title="Real-time sync" icon="bolt">
+    Read and write customer profiles, validate and redeem vouchers, and interact with live shopping baskets using synchronous APIs.
+  </Card>
+  <Card title="Omnichannel orders" icon="house">
+    Manage Home Delivery and Click and Collect order flows, including advance payments and dispatch sales across multiple shipments.
+  </Card>
+</CardGroup>
+
+## Key concepts
+
+Tilroy organises its API surface into three patterns. Understanding which pattern applies to each operation is the foundation of every integration:
+
+- **Import endpoints** (`/import/*`) — Send data into Tilroy asynchronously. Tilroy validates the payload on receipt and returns `202 Accepted`. Processing happens in a queue. You are responsible for handling validation errors and monitoring processing status.
+- **Export endpoints** (`/export/*`) — Pull changes out of Tilroy in near real time. Responses are paginated, and messages are retained for 14 days. Use `dateExportedSince` to page through new events incrementally.
+- **Synchronous APIs** — Interact with Tilroy directly in real time. Create or update a customer record, check a voucher balance, or read basket state. These calls return results immediately and are used where low latency matters.
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Authentication" icon="key" href="/authentication">
+    Get your API keys and learn which headers every request requires.
+  </Card>
+  <Card title="API Concepts" icon="layer-group" href="/api-concepts">
+    Go deeper on the import, export, and synchronous API patterns.
+  </Card>
+</CardGroup>

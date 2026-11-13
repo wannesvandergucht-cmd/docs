@@ -1,0 +1,98 @@
+---
+title: "Price API: Import Prices with Scope and Validity Rules"
+sidebarTitle: "Price API"
+description: "Import product prices into Tilroy with support for standard and promo prices, volume pricing, country and shop-level scoping, and time-based validity."
+---
+
+The Price API lets you push prices from your ERP or pricing system into Tilroy. It supports a flexible model that covers standard and promotional prices, retail and wholesale ranges, volume-based pricing tiers, and scope rules that let you target prices at specific shops, countries, or your entire estate — all with date-based validity windows.
+
+## Import Endpoint
+
+**POST /import/prices** — Submit price records to Tilroy.
+
+Send an array of price objects as your request body. Tilroy validates the payload on receipt, returns `202 OK`, and processes the import asynchronously.
+
+```http request.http
+POST /import/prices
+x-api-key: <your-profile-key>
+Tilroy-Api-Key: <your-account-key>
+Content-Type: application/json
+```
+
+For the full request schema, see the [Price API reference](https://tilroy-apidocs-prd.s3.eu-west-1.amazonaws.com/priceapi.html).
+
+## Price Types
+
+Tilroy supports two core price types:
+
+| Type | Description |
+|---|---|
+| **standardPrice** | The regular selling price displayed in POS and webshop. Used as the reference price for discount calculations. |
+| **promoPrice** | A promotional or strikethrough price. Displayed alongside the standard price in POS and webshop. Tilroy only applies the promo price if it is lower than the current standard price. |
+
+Prices also carry a **range** — either `retail` (VAT-inclusive, used for B2C) or `wholesale` (VAT-exclusive, used for B2B). Use the `labelType` field to control promo label printing at POS.
+
+For a full explanation of how prices interact with sales, see the [Pricing Model](/concepts/pricing-model) concept page.
+
+## Price Scope
+
+Every price record has a scope that determines where it applies. Tilroy resolves the active price using the following priority order (highest to lowest):
+
+<Steps>
+  <Step title="Shop price">
+    A price with a specific shop set. Overrides both country and ALL prices for that shop.
+  </Step>
+  <Step title="Country price">
+    A price with a country code set (but no specific shop). Overrides the ALL price for all shops in that country.
+  </Step>
+  <Step title="ALL price">
+    A price with no shop or country specified. Valid across your entire estate as the default fallback.
+  </Step>
+</Steps>
+
+When two prices share the same scope and start date, **the one with the latest creation date wins**.
+
+## Volume Pricing
+
+Use volume pricing to apply a different unit price when a customer buys above a certain quantity threshold.
+
+| Field | Description |
+|---|---|
+| **Volume prices** | Define a lower unit price that applies from a specified quantity. Used for standard price tiers. |
+| **Volume discounts** | Define a lower unit promotional price from a specified quantity. Used for promo price tiers. |
+
+Include volume price tiers as a nested array within your price record payload.
+
+## Message Format
+
+Structure your import payload as an **array of price objects**. Each object represents one price record for one SKU.
+
+```json request.json
+[
+  {
+    "idSource": "ERP-PRICE-001",
+    "idSku": "SKU-12345",
+    "priceType": "standardPrice",
+    "range": "retail",
+    "price": 49.99,
+    "startDate": "2024-01-01",
+    "endDate": "2024-12-31"
+  }
+]
+```
+
+<Tip>
+  Send one product's prices per message. This keeps payloads atomic — if a single price record fails validation, only that product is affected and the failure is easier to diagnose.
+</Tip>
+
+## idSource: Updating Existing Prices
+
+<Warning>
+  You **must** include `idSource` — your own unique identifier for each price record — if you want to update an existing price. Without `idSource`, every import creates a new price record instead of updating the existing one, which leads to duplicate pricing entries and unpredictable POS behaviour.
+</Warning>
+
+Use a stable, meaningful identifier from your ERP or pricing system as `idSource` (for example, `ERP-PRICE-{skuId}-{priceType}-{shopId}`). Keep this consistent across all future imports for the same price record.
+
+## Full API Reference
+
+For the complete field reference, all supported price types, and worked examples, see the [Price API reference](https://tilroy-apidocs-prd.s3.eu-west-1.amazonaws.com/priceapi.html).
