@@ -106,10 +106,7 @@ Tilroy activates webhooks for you. There is no self-service setup. Send the foll
 | Option | How it works |
 | --- | --- |
 | OAuth2 client credentials | You give Tilroy a client id, client secret, scope and token URL. Tilroy fetches a token and sends it as a `Bearer` token on every call. |
-| Shared secret header | Tilroy adds a fixed HTTP header with a secret you provide, for example `X-Webhook-Secret`. You reject calls without the right value. |
 | IP whitelisting | Tilroy sends webhooks from a single public IP address, available on request. You can allow only that address. |
-
-You can combine IP whitelisting with one of the other options.
 
 <Note>
   A webhook carries identifiers only. Reading the data always requires your own API credentials.
