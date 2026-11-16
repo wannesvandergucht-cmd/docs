@@ -67,20 +67,22 @@ Every sale line carries a full set of price fields so you can reconcile sell pri
 The `payments` segment lists every payment method used to settle the sale. Use `payments.paymentType.code` to identify each method.
 
 ```json Example payment segment
-      "payments": [
-        {
-            "paymentType": {
-                "code": "Bancontact/MC",
-                "descriptions": [
-                    {
-                        "languageCode": "NL",
-                        "description": "Bancontact/Mister Cash"
-                    }
-                ],
-            },
-            "amount": 9
-        }
-    ]
+{
+  "payments": [
+    {
+      "paymentType": {
+        "code": "Bancontact/MC",
+        "descriptions": [
+          {
+            "languageCode": "NL",
+            "description": "Bancontact/Mister Cash"
+          }
+        ]
+      },
+      "amount": 9
+    }
+  ]
+}
 ```
 
 ### Gift Cards
@@ -129,7 +131,9 @@ When a customer pays a deposit at the time of ordering, the payment appears in t
 {
   "payments": [
     {
-      "paymenttype_code": "Voorschot",
+      "paymentType": {
+        "code": "Voorschot"
+      },
       "amount": -50.00
     }
   ]
@@ -163,15 +167,17 @@ The following example shows a sale containing a Home Delivery order line (type `
   "type": "I",
   "isDispatch": false,
   "customer": {
-    "id": 1042
+    "idTilroy": "1042"
   },
   "shop": {
-    "code": "WEB"
+    "number": 99,
+    "name": "Webshop"
   },
   "lines": [
     {
       "type": "T",
-      "idTillBasketLine": "line-001",
+      "idTillBasketLine": 1,
+      "orderLineId": "1",
       "sellPrice": 199.99,
       "standardPrice": 199.99,
       "lineTotalSell": 199.99,
@@ -183,20 +189,19 @@ The following example shows a sale containing a Home Delivery order line (type `
         "isClickAndCollect": false
       },
       "order": {
-        "idSku": "SKU-8821",
+        "idSku": 40587189,
+        "idSourceSku": "SKU-8821",
         "quantity": 1,
-        "deliveryAddress": {
-          "street": "Kerkstraat 12",
-          "city": "Ghent",
-          "postalCode": "9000",
-          "countryCode": "BE"
-        }
+        "sellPrice": 199.99,
+        "standardPrice": 199.99
       }
     }
   ],
   "payments": [
     {
-      "paymenttype_code": "Voorschot",
+      "paymentType": {
+        "code": "Voorschot"
+      },
       "amount": -50.00
     }
   ]

@@ -17,18 +17,18 @@ You are responsible for:
 - Ensuring idempotency where required (use `idSource` fields to correlate records)
 
 ```http import-request.http
-POST /import/prices HTTP/1.1
+POST /priceapi/production/import/prices HTTP/1.1
 Host: api.tilroy.com
 x-api-key: YOUR_X_API_KEY
 Tilroy-Api-Key: YOUR_TILROY_API_KEY
 Content-Type: application/json
 
-{
-  "prices": [ ... ]
-}
+[
+  { ... }
+]
 ```
 
-```json import-response.json
+```http import-response.http
 HTTP/1.1 202 Accepted
 ```
 
@@ -41,7 +41,7 @@ Every change in Tilroy that is relevant to your integration generates a message 
 Use the `dateExportedSince` filter to fetch only messages that have appeared since your last poll. This lets you build an incremental sync loop without re-processing records you have already consumed.
 
 ```http export-request.http
-GET /export/sales?dateExportedSince=2024-06-01T00:00:00Z&count=100 HTTP/1.1
+GET /saleapi/production/export/sales?dateExportedSince=2024-06-01T00:00:00Z&count=100 HTTP/1.1
 Host: api.tilroy.com
 x-api-key: YOUR_X_API_KEY
 Tilroy-Api-Key: YOUR_TILROY_API_KEY
@@ -68,7 +68,7 @@ Use synchronous APIs when your integration requires low latency or needs to reac
 | **Basket API** | Read or manipulate an active shopping basket in real time |
 
 ```http sync-request.http
-GET /customers?email=jane.doe@example.com HTTP/1.1
+GET /customerapi/production/customers/12345 HTTP/1.1
 Host: api.tilroy.com
 x-api-key: YOUR_X_API_KEY
 Tilroy-Api-Key: YOUR_TILROY_API_KEY

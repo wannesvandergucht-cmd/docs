@@ -11,7 +11,7 @@ The Sale API's export endpoint lets you pull all completed transactions from Til
 Poll completed transactions using the export endpoint:
 
 ```http
-GET /export/sales
+GET https://api.tilroy.com/saleapi/production/export/sales?dateExportedSince={timestamp}&count=100
 ```
 
 The Sale API is asynchronous and pull-based. Every completed transaction generates a message. Retrieve messages in order by modification timestamp, paginate through them using the `count` parameter, and filter using `dateExportedSince` to fetch only new records. Refer to the [full Sale API documentation](https://tilroy-apidocs-prd.s3.eu-west-1.amazonaws.com/saleapi.html) for complete request/response schemas and field-level detail.

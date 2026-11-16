@@ -13,7 +13,7 @@ The Price API lets you push prices from your ERP or pricing system into Tilroy. 
 Send an array of price objects as your request body. Tilroy validates the payload on receipt, returns `202 OK`, and processes the import asynchronously.
 
 ```http request.http
-POST /import/prices
+POST https://api.tilroy.com/priceapi/production/import/prices
 x-api-key: <your-profile-key>
 Tilroy-Api-Key: <your-account-key>
 Content-Type: application/json
@@ -23,14 +23,14 @@ For the full request schema, see the [Price API reference](https://tilroy-apidoc
 
 ## Price Types
 
-Tilroy supports two core price types:
+Tilroy supports two core price types, set in the `type` field:
 
 | Type | Description |
 |---|---|
-| **standardPrice** | The regular selling price displayed in POS and webshop. Used as the reference price for discount calculations. |
-| **promoPrice** | A promotional or strikethrough price. Displayed alongside the standard price in POS and webshop. Tilroy only applies the promo price if it is lower than the current standard price. |
+| `standard` | The regular selling price displayed in POS and webshop. Used as the reference price for discount calculations. |
+| `promo` | A promotional or strikethrough price. Displayed alongside the standard price in POS and webshop. Tilroy only applies the promo price if it is lower than the current standard price. |
 
-Prices also carry a **range** — either `retail` (VAT-inclusive, used for B2C) or `wholesale` (VAT-exclusive, used for B2B). Use the `labelType` field to control promo label printing at POS.
+Prices also carry a `priceRange` — `retail` (the default) (VAT-inclusive, used for B2C) or `wholesale` (VAT-exclusive, used for B2B). Use the `labelType` field to control promo label printing at POS.
 
 For a full explanation of how prices interact with sales, see the [Pricing Model](/concepts/pricing-model) concept page.
 
@@ -70,13 +70,15 @@ Structure your import payload as an **array of price objects**. Each object repr
 ```json request.json
 [
   {
-    "idSource": "ERP-PRICE-001",
-    "idSku": "SKU-12345",
-    "priceType": "standardPrice",
-    "range": "retail",
+    "sourceId": "ERP-PRICE-001",
+    "sku": {
+      "sourceId": "SKU-12345"
+    },
+    "type": "standard",
+    "priceRange": "retail",
     "price": 49.99,
-    "startDate": "2024-01-01",
-    "endDate": "2024-12-31"
+    "startDate": "2024-01-01T00:00:00Z",
+    "endDate": "2024-12-31T23:59:59Z"
   }
 ]
 ```
@@ -85,13 +87,13 @@ Structure your import payload as an **array of price objects**. Each object repr
   Send one product's prices per message. This keeps payloads atomic — if a single price record fails validation, only that product is affected and the failure is easier to diagnose.
 </Tip>
 
-## idSource: Updating Existing Prices
+## sourceId: Updating Existing Prices
 
 <Warning>
-  You **must** include `idSource` — your own unique identifier for each price record — if you want to update an existing price. Without `idSource`, every import creates a new price record instead of updating the existing one, which leads to duplicate pricing entries and unpredictable POS behaviour.
+  You **must** include `sourceId` — your own unique identifier for each price record — if you want to update an existing price. Without `sourceId`, every import creates a new price record instead of updating the existing one, which leads to duplicate pricing entries and unpredictable POS behaviour.
 </Warning>
 
-Use a stable, meaningful identifier from your ERP or pricing system as `idSource` (for example, `ERP-PRICE-{skuId}-{priceType}-{shopId}`). Keep this consistent across all future imports for the same price record.
+Use a stable, meaningful identifier from your ERP or pricing system as `sourceId` (for example, `ERP-PRICE-{skuId}-{type}-{shopId}`). Keep this consistent across all future imports for the same price record.
 
 ## Full API Reference
 

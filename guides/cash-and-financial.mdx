@@ -112,7 +112,7 @@ All three Shop API export endpoints support the same query parameters for effici
 - **14-day retention** — Messages are available for 14 days from generation. Pull at least daily to ensure you never miss records.
 
 ```http incremental-pull.http
-GET /export/cashups?dateExportedSince=2024-06-10T00:00:00Z&count=100
+GET https://api.tilroy.com/shopapi/production/export/cashups?dateExportedSince=2024-06-10T00:00:00Z&count=100
 x-api-key: <your-profile-key>
 Tilroy-Api-Key: <your-account-key>
 ```

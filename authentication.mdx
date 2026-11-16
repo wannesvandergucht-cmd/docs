@@ -19,7 +19,7 @@ Include both of the following headers on every API request:
 </ParamField>
 
 ```http request.http
-GET /export/sales HTTP/1.1
+GET /saleapi/production/export/sales?dateExportedSince=2024-06-01T00:00:00Z HTTP/1.1
 Host: api.tilroy.com
 x-api-key: YOUR_X_API_KEY
 Tilroy-Api-Key: YOUR_TILROY_API_KEY
@@ -45,11 +45,11 @@ When you call the Customer API, include a third header in addition to `x-api-key
 
 Tilroy supports two token strategies depending on your use case:
 
-- **Per-customer token** — Use the Authentication API `/tokens` endpoint to obtain a token scoped to a specific customer. Use this when the call is made in the context of an authenticated customer session (for example, in a webshop).
+- **Per-customer token** — Use the Authentication API `POST /auth/tokens` endpoint to obtain a token scoped to a specific customer. Use this when the call is made in the context of an authenticated customer session (for example, in a webshop).
 - **Service-level token** — A single token that grants access to all customer records. Use this for back-office sync operations where you process customer data in bulk. Contact Tilroy to obtain a service-level token.
 
 ```http customer-api-request.http
-GET /customers/12345 HTTP/1.1
+GET /customerapi/production/customers/12345 HTTP/1.1
 Host: api.tilroy.com
 x-api-key: YOUR_X_API_KEY
 Tilroy-Api-Key: YOUR_TILROY_API_KEY

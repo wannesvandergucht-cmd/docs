@@ -81,23 +81,23 @@ When multiple price records are eligible for the same SKU, channel, and moment i
   On 1 November, Record A is active (€19.00). On 15 November, Record B becomes active (€15.00) because its start date is later. If both records had `startDate = 2024-11-01`, Record B would win because it was created more recently.
 </Accordion>
 
-## idSource
+## sourceId
 
-`idSource` is a unique identifier you assign to a price record from your ERP or pricing system. It is the key to updating an existing price record rather than creating a new one.
+`sourceId` is a unique identifier you assign to a price record from your ERP or pricing system. It is the key to updating an existing price record rather than creating a new one.
 
-- **With `idSource`:** Tilroy looks up the existing record by `idSource` and updates it in place. Only one active record per `idSource` exists at any time.
-- **Without `idSource`:** Tilroy **always creates a new record**, even if you are re-sending the same price data.
+- **With `sourceId`:** Tilroy looks up the existing record by `sourceId` and updates it in place. Only one active record per `sourceId` exists at any time.
+- **Without `sourceId`:** Tilroy **always creates a new record**, even if you are re-sending the same price data.
 
 <Warning>
-  Omitting `idSource` when re-sending prices creates duplicate price records. Duplicate records with the same scope and start date are resolved by creation date, which means your most recent send wins — but your price history becomes cluttered and harder to audit. Always assign a stable `idSource` from your ERP for every price record you manage.
+  Omitting `sourceId` when re-sending prices creates duplicate price records. Duplicate records with the same scope and start date are resolved by creation date, which means your most recent send wins — but your price history becomes cluttered and harder to audit. Always assign a stable `sourceId` from your ERP for every price record you manage.
 </Warning>
 
 ## Sending Prices
 
 Import prices using the asynchronous Price API endpoint:
 
-```
-POST /import/prices
+```http
+POST https://api.tilroy.com/priceapi/production/import/prices
 ```
 
 Tilroy validates the message on receipt and returns `202 Accepted`. Processing happens asynchronously in a queue.
@@ -109,26 +109,28 @@ Tilroy validates the message on receipt and returns `202 Accepted`. Processing h
 **Best practice:** send prices for **one product per message**. This limits the blast radius of a validation error — a problem with one product's prices does not block price updates for other products.
 
 ```json Single-product price import
-{
-  "prices": [
-    {
-      "idSource": "ERP-PRICE-88210-RETAIL",
-      "idSku": "SKU-88210",
-      "priceType": "standardPrice",
-      "priceRange": "retail",
-      "amount": 59.99,
-      "startDate": "2024-12-01",
-      "endDate": "2024-12-31"
+[
+  {
+    "sourceId": "ERP-PRICE-88210-RETAIL",
+    "sku": {
+      "sourceId": "SKU-88210"
     },
-    {
-      "idSource": "ERP-PRICE-88210-PROMO",
-      "idSku": "SKU-88210",
-      "priceType": "promoPrice",
-      "priceRange": "retail",
-      "amount": 44.99,
-      "startDate": "2024-12-01",
-      "endDate": "2024-12-31"
-    }
-  ]
-}
+    "type": "standard",
+    "priceRange": "retail",
+    "price": 59.99,
+    "startDate": "2024-12-01T00:00:00Z",
+    "endDate": "2024-12-31T23:59:59Z"
+  },
+  {
+    "sourceId": "ERP-PRICE-88210-PROMO",
+    "sku": {
+      "sourceId": "SKU-88210"
+    },
+    "type": "promo",
+    "priceRange": "retail",
+    "price": 44.99,
+    "startDate": "2024-12-01T00:00:00Z",
+    "endDate": "2024-12-31T23:59:59Z"
+  }
+]
 ```

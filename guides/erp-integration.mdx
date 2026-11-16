@@ -95,7 +95,7 @@ All export endpoints share the same pagination and filtering conventions. Use `d
 Here is a sample request that retrieves up to 100 sales modified after a given timestamp:
 
 ```http request.http
-GET /export/sales?dateExportedSince=2024-06-01T08:00:00Z&count=100
+GET https://api.tilroy.com/saleapi/production/export/sales?dateExportedSince=2024-06-01T08:00:00Z&count=100
 x-api-key: <your-profile-key>
 Tilroy-Api-Key: <your-account-key>
 ```
@@ -126,8 +126,8 @@ Understanding the difference between validation errors and processing errors is 
 
     ```json example-validation-error.json
     {
-      "status": 400,
-      "message": "Field 'idSource' is required for price updates."
+      "code": "VALIDATION_ERROR",
+      "message": "sku is required"
     }
     ```
   </Tab>

@@ -43,7 +43,7 @@ Tilroy publishes transfer events whenever a transfer is initiated, received, or 
 | *(received)* | Receipt confirmed — `quantityReceived` has been set and the transfer is complete. |
 
 <Note>
-  Always include `idSource` when importing transfers. Tilroy includes this value in the corresponding export event, so you can match receipts back to the original shipment record in your ERP or warehouse system without ambiguity.
+  Always include `sourceId` when importing transfers. Tilroy includes this value as `idSource` in the corresponding export event, so you can match receipts back to the original shipment record in your ERP or warehouse system without ambiguity.
 </Note>
 
 ## Transfer Flows
@@ -54,7 +54,7 @@ Tilroy publishes transfer events whenever a transfer is initiated, received, or 
 
     <Steps>
       <Step title="Import the transfer">
-        POST to `/import/transfers` with the source (DC) and destination (store), quantity, and your `idSource`. Set status to `T`.
+        POST to `/import/transfers` with the source (DC) and destination (store), quantity, and your `sourceId`.
       </Step>
       <Step title="Store receives">
         Tilroy publishes a transfer export event. The store confirms receipt, updating `quantityReceived`.
@@ -69,7 +69,7 @@ Tilroy publishes transfer events whenever a transfer is initiated, received, or 
 
     <Steps>
       <Step title="Store creates a request">
-        POST to `/import/transfers` with `isRequest: true` and status `Q`. The store specifies the SKU and quantity needed.
+        POST to `/import/transfers` with `isRequest: true`. The store specifies the SKU and quantity needed.
       </Step>
       <Step title="DC fulfils the request">
         POST a new transfer referencing the original request's Tilroy ID. Use `doCloseRequest: true` to close the open request.
@@ -87,10 +87,10 @@ Tilroy publishes transfer events whenever a transfer is initiated, received, or 
 
     <Steps>
       <Step title="Store initiates the return">
-        POST to `/import/transfers` with the store as source and DC as destination, status `T`.
+        POST to `/import/transfers` with the store as `shopFrom` and the DC as `shopTo`.
       </Step>
       <Step title="DC confirms receipt">
-        POST a confirmation import with `quantityReceived` set to the actual quantity received.
+        POST a confirmation import with `doReceipt: true` and each line's `quantity` set to the actual quantity received.
       </Step>
     </Steps>
   </Tab>

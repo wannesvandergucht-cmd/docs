@@ -6,23 +6,38 @@ description: "Use the Authentication API to obtain bearer tokens for customer-le
 
 The Authentication API issues bearer tokens that authorize access to customer-scoped endpoints in Tilroy — most notably the Customer API. When your application needs to read or update data on behalf of a specific customer, call this API first to obtain a token, then pass that token as the `Authorization` header on subsequent Customer API requests.
 
-## The /tokens Endpoint
+## The /auth/tokens Endpoint
 
-**POST /tokens** — Exchange customer credentials for a bearer token.
+**POST /auth/tokens** — Exchange customer credentials for a bearer token.
 
-Send the customer's identifying credentials in your request body. On success, the Authentication API returns a token scoped to that specific customer. The token is time-limited — check the `expiresAt` or equivalent field in the response and refresh it before it expires.
+Send the customer's `login` and `password` in the request body. On success, the Authentication API returns an `access` token scoped to that specific customer, and a `refresh` token. The access token is time-limited. When it expires, call the same endpoint with the expired `access` token and the `refresh` token to get a new pair.
 
 ```http request.http
-POST /tokens
+POST https://api.tilroy.com/authenticationapi/production/auth/tokens
 x-api-key: <your-profile-key>
 Tilroy-Api-Key: <your-account-key>
 Content-Type: application/json
+
+{
+  "login": "john",
+  "password": "password123",
+  "role": "customer"
+}
+```
+
+```json response.json
+{
+  "userId": 1232,
+  "role": "customer",
+  "access": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "refresh": "9d00638d0c616a1bba3c46a854ee5dbfe0cad49f"
+}
 ```
 
 Once you have the token, include it on every Customer API request for that customer:
 
 ```http customer-request.http
-GET /customers/{id}
+GET https://api.tilroy.com/customerapi/production/customers/{customerId}
 x-api-key: <your-profile-key>
 Tilroy-Api-Key: <your-account-key>
 Authorization: Bearer <token>

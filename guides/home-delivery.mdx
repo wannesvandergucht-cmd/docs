@@ -31,14 +31,17 @@ Both order types can be placed through the online webshop or directly at the POS
       "lines": [
         {
           "type": "T",
+          "idTillBasketLine": 1,
           "collectMethod": {
-            "isHomeDelivery": true
+            "isHomeDelivery": true,
+            "isClickAndCollect": false
           },
           "order": {
-            "idSku": "SKU-001",
+            "idSku": 40587189,
+            "idSourceSku": "SKU-001",
             "quantity": 2,
             "sellPrice": 49.95,
-            "orderLineId": "OL-001"
+            "orderLineId": "1"
           }
         }
       ]
@@ -63,12 +66,13 @@ Both order types can be placed through the online webshop or directly at the POS
       "lines": [
         {
           "type": "P",
-          "idTillBasketLineOrig": "original-order-line-id",
-          "order": {
-            "idSku": "SKU-001",
-            "quantity": 2,
-            "orderLineId": "OL-001"
-          }
+          "idTillBasketLineOrig": "1",
+          "sku": {
+            "idTilroy": "40587189",
+            "idSource": "SKU-001"
+          },
+          "quantity": 2,
+          "orderLineId": "1"
         }
       ]
     }

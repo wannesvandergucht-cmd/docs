@@ -13,7 +13,7 @@ The Product API lets you push your product catalogue from an external system —
 Send your product records as a structured payload to this endpoint. Tilroy validates the message on receipt and queues it for asynchronous processing.
 
 ```http request.http
-POST /import/products
+POST https://api.tilroy.com/product-bulk/production/import/products
 x-api-key: <your-profile-key>
 Tilroy-Api-Key: <your-account-key>
 Content-Type: application/json
